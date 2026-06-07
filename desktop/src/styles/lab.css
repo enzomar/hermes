@@ -333,6 +333,16 @@
 .lab-progress-counts .done { color: var(--success); }
 .lab-progress-counts .failed { color: var(--danger); }
 .lab-progress-counts .running { color: var(--accent); }
+.lab-progress-counts .pending { color: var(--text-muted); }
+
+.lab-progress-bar-active {
+  animation: lab-progress-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes lab-progress-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
 
 /* ─── Lab trace timeline ──────────────────────────────────────────────────── */
 

@@ -47,17 +47,24 @@ import { clamp, copyText, escapeHtml, formatTime, getErrorMessage, sleep } from 
 const persistedWorkspace = loadPersistedWorkspace();
 const state: HermesState = createState(persistedWorkspace);
 
+// Initialize session feature module with app-level dependencies
+initSessions({
+  getState: () => state,
+  requestJson,
+  refreshBootstrap,
+  setFeedback,
+  applyBootstrap,
+  runWithFeedback,
+  executeAction,
+  setActiveWorkspaceView,
+  focusComposer,
+});
+
 const GITHUB_MODELS_API_BASE = "https://models.github.ai/inference";
 const GITHUB_MODELS_PAT_SCOPE = "models:read";
 const DEFAULT_LLM_PROFILE_NAME = "Primary AI";
 const MAX_CHAT_ATTACHMENTS = 6;
 const MAX_ATTACHMENT_BYTES = 64 * 1024;
-const TEXT_ATTACHMENT_EXTENSIONS = new Set([
-  "c", "cc", "cpp", "cs", "css", "csv", "go", "h", "hpp", "html", "ini", "java", "js", "json",
-  "jsx", "kt", "md", "mjs", "py", "rb", "rs", "scss", "sh", "sql", "svg", "toml", "ts", "tsx",
-  "txt", "xml", "yaml", "yml",
-]);
-
 type LlmProviderMode = "openai" | "anthropic" | "groq" | "mistral" | "together" | "perplexity" | "openrouter" | "google" | "cohere" | "fireworks" | "deepseek" | "local" | "local-cli" | "github-copilot";
 
 type LlmSettingsForm = {
@@ -1418,53 +1425,8 @@ function handleTransportToggle(): void {
   }
 }
 
-async function readPendingAttachment(file: File): Promise<PendingAttachment> {
-  const truncated = file.size > MAX_ATTACHMENT_BYTES;
-  const contentSlice = file.slice(0, MAX_ATTACHMENT_BYTES);
-  const rawContent = await contentSlice.text();
-  const normalizedContent = normalizeAttachmentContent(file, rawContent, truncated);
-
-  return {
-    name: file.name,
-    mimeType: file.type || guessAttachmentMimeType(file.name),
-    size: file.size,
-    content: normalizedContent,
-    truncated,
-  };
-}
-
-function normalizeAttachmentContent(file: File, rawContent: string, truncated: boolean): string {
-  const sanitized = rawContent.replace(/\u0000/g, "").trimEnd();
-  if (!looksTextAttachment(file, sanitized)) {
-    return `[Binary or unsupported attachment omitted: ${file.name}]`;
-  }
-  if (!truncated) {
-    return sanitized;
-  }
-  return `${sanitized}\n\n[Attachment truncated to ${MAX_ATTACHMENT_BYTES} bytes before sending.]`;
-}
-
-function looksTextAttachment(file: File, content: string): boolean {
-  if (file.type.startsWith("text/")) {
-    return true;
-  }
-  if (["application/json", "application/xml", "image/svg+xml"].includes(file.type)) {
-    return true;
-  }
-  const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() ?? "" : "";
-  if (TEXT_ATTACHMENT_EXTENSIONS.has(extension)) {
-    return true;
-  }
-  return !/\u0000/.test(content);
-}
-
-function guessAttachmentMimeType(fileName: string): string {
-  const extension = fileName.includes(".") ? fileName.split(".").pop()?.toLowerCase() ?? "" : "";
-  if (extension === "json") return "application/json";
-  if (extension === "md") return "text/markdown";
-  if (["yaml", "yml"].includes(extension)) return "application/yaml";
-  return "text/plain";
-}
+// Attachment handling delegated to features/attachments.ts
+import { readPendingAttachment } from "./features/attachments";
 
 function handleLlmProviderChange(): void {
   syncSelectedLlmProfileDraft(true);
@@ -2598,93 +2560,20 @@ function focusConversationSearch(): void {
   });
 }
 
-async function createSession(title?: string, focus = false): Promise<void> {
-  await runWithFeedback("Creating...", "Conversation created.", async () => {
-    const res = await requestJson<{ bootstrap: BootstrapPayload }>("/api/sessions", {
-      method: "POST",
-      body: JSON.stringify({ title }),
-    });
-    applyBootstrap(res.bootstrap);
-  });
-  if (focus) focusComposer();
-}
-
-async function persistSessionTitle(sessionId: string, title: string): Promise<void> {
-  await requestJson(`/api/sessions/${encodeURIComponent(sessionId)}`, {
-    method: "PATCH",
-    body: JSON.stringify({ title }),
-  });
-}
-
-async function startInlineSessionRename(sessionId: string): Promise<void> {
-  if (!sessionId) {
-    return;
-  }
-
-  if (state.activeSessionId !== sessionId) {
-    await refreshBootstrap(sessionId);
-  }
-
-  const session = state.sessions.find((entry) => entry.session_id === sessionId);
-  if (!session) {
-    setFeedback("Conversation not found.", "error");
-    return;
-  }
-
-  setActiveWorkspaceView("chat");
-  state.ui.renamingSessionId = sessionId;
-  state.ui.renamingSessionDraft = String(session.title ?? "Untitled session");
-  renderShellSummary(state);
-  focusConversationTitleInput();
-}
-
-function cancelInlineSessionRename(): void {
-  clearInlineSessionRename();
-  renderShellSummary(state);
-}
-
-function clearInlineSessionRename(): void {
-  state.ui.renamingSessionId = null;
-  state.ui.renamingSessionDraft = "";
-}
-
-async function saveInlineSessionRename(): Promise<void> {
-  const sessionId = state.ui.renamingSessionId;
-  if (!sessionId) {
-    return;
-  }
-
-  const trimmed = state.ui.renamingSessionDraft.trim();
-  if (!trimmed) {
-    setFeedback("Conversation title is required.", "error");
-    focusConversationTitleInput();
-    return;
-  }
-
-  const currentSession = state.sessions.find((entry) => entry.session_id === sessionId);
-  if (String(currentSession?.title ?? "").trim() === trimmed) {
-    cancelInlineSessionRename();
-    return;
-  }
-
-  await runWithFeedback("Renaming...", "Conversation renamed.", async () => {
-    await persistSessionTitle(sessionId, trimmed);
-    clearInlineSessionRename();
-    await refreshBootstrap(sessionId);
-  });
-}
-
-function focusConversationTitleInput(): void {
-  requestAnimationFrame(() => {
-    const input = document.querySelector<HTMLInputElement>("#conversation-title-input");
-    if (!input) {
-      return;
-    }
-
-    input.focus();
-    input.select();
-  });
-}
+// Session management delegated to features/sessions.ts
+import {
+  initSessions,
+  createSession,
+  deleteSession,
+  duplicateSession,
+  shareSession,
+  switchRelativeSession,
+  startInlineSessionRename,
+  cancelInlineSessionRename,
+  saveInlineSessionRename,
+  persistSessionTitle,
+  clearInlineSessionRename,
+} from "./features/sessions";
 
 function openSupport(): void {
   toggleUtilityOverlay("#support-overlay", true);
@@ -2737,47 +2626,6 @@ function setContactFeedback(message: string, tone: FeedbackTone): void {
   feedback.dataset.tone = tone;
 }
 
-async function deleteSession(sessionId: string): Promise<void> {
-  const session = state.sessions.find((entry) => entry.session_id === sessionId);
-  const confirmed = window.confirm(`Delete conversation "${String(session?.title ?? "Untitled session")}"? This removes its stored trace.`);
-  if (!confirmed) return;
-
-  await runWithFeedback("Deleting...", "Conversation deleted.", async () => {
-    await requestJson(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
-    const nextSessionId = state.activeSessionId === sessionId ? undefined : state.activeSessionId ?? undefined;
-    await refreshBootstrap(nextSessionId);
-  });
-}
-
-async function duplicateSession(sessionId: string): Promise<void> {
-  const session = state.sessions.find((entry) => entry.session_id === sessionId);
-  const title = window.prompt("Duplicate conversation as", `Copy of ${String(session?.title ?? "Conversation")}`);
-  if (title === null) return;
-
-  await runWithFeedback("Duplicating...", "Conversation duplicated.", async () => {
-    const res = await requestJson<{ bootstrap: BootstrapPayload }>(`/api/sessions/${encodeURIComponent(sessionId)}/duplicate`, {
-      method: "POST",
-      body: JSON.stringify({ title: title.trim() || undefined }),
-    });
-    applyBootstrap(res.bootstrap);
-  });
-}
-
-async function shareSession(sessionId: string): Promise<void> {
-  const session = state.sessions.find((entry) => entry.session_id === sessionId);
-  const response = await requestJson<{ events: EventRecord[] }>(`/api/sessions/${encodeURIComponent(sessionId)}/events`);
-  const transcript = deriveTimeline(response.events)
-    .map((entry) => {
-      const header = entry.kind === "tool" ? `### Tool: ${entry.title}` : `### ${entry.title}`;
-      const meta = entry.meta.length ? `_${entry.meta.join(" • ")}_\n\n` : "";
-      return `${header}\n\n${meta}${entry.body || entry.preview || ""}`.trim();
-    })
-    .join("\n\n");
-  const payload = [`# ${String(session?.title ?? "Conversation")}`, transcript].filter(Boolean).join("\n\n");
-  await copyText(payload);
-  setFeedback("Conversation transcript copied.", "success");
-}
-
 async function applySuggestedPrompt(prompt: string): Promise<void> {
   if (!state.activeSessionId) {
     const res = await requestJson<{ bootstrap: BootstrapPayload }>("/api/sessions", {
@@ -2793,15 +2641,6 @@ async function applySuggestedPrompt(prompt: string): Promise<void> {
   state.ui.composerDraft = prompt;
   persistWorkspaceState(state);
   focusComposer();
-}
-
-async function switchRelativeSession(direction: 1 | -1): Promise<void> {
-  if (!state.ui.recentSessionIds.length || !state.activeSessionId) return;
-  const available = state.ui.recentSessionIds.filter((id) => state.sessions.some((s) => s.session_id === id));
-  const idx = available.indexOf(state.activeSessionId);
-  if (idx === -1) return;
-  const next = (idx + direction + available.length) % available.length;
-  await executeAction("switch-session", { sessionId: available[next] });
 }
 
 async function runWithFeedback(start: string, success: string, work: () => Promise<void>): Promise<void> {
@@ -3366,7 +3205,7 @@ function renderLabView(panel?: string): void {
       void renderLabDatasetsPanel(container);
       return;
     case "experiments":
-      renderLabExperimentsPanel(container);
+      void renderLabExperimentsPanel(container);
       return;
     case "models":
       renderLabModelsPanel(container);
@@ -3381,7 +3220,7 @@ function renderLabView(panel?: string): void {
       renderLabFixturesPanel(container);
       return;
     default:
-      renderLabExperimentsPanel(container);
+      void renderLabExperimentsPanel(container);
   }
 }
 
@@ -3391,23 +3230,9 @@ async function renderLabDatasetsPanel(container: HTMLElement): Promise<void> {
   renderLabDatasets(container);
 }
 
-function renderLabExperimentsPanel(container: HTMLElement): void {
-  container.innerHTML = `
-    <div class="lab-panel-header">
-      <div>
-        <h2 class="lab-panel-title">Experiments</h2>
-        <p class="lab-panel-subtitle">Define and run matrix experiments across model, tool, and workflow variants.</p>
-      </div>
-      <div class="lab-actions">
-        <button class="lab-btn primary" data-action="lab-nav" data-lab-panel="datasets">+ New Experiment</button>
-      </div>
-    </div>
-    <div class="lab-empty">
-      <div class="lab-empty-icon">🧪</div>
-      <p class="lab-empty-title">No experiments yet</p>
-      <p class="lab-empty-desc">Create a dataset first, then define an experiment to run tasks across model and tool variants.</p>
-    </div>
-  `;
+async function renderLabExperimentsPanel(container: HTMLElement): Promise<void> {
+  const { renderLabExperiments } = await import("./components/lab-experiments");
+  renderLabExperiments(container);
 }
 
 function renderLabModelsPanel(container: HTMLElement): void {
