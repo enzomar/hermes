@@ -1,0 +1,294 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+
+permissions:
+  contents: write
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1: Build the Python sidecar per OS using PyInstaller.
+  # This runs in a matrix so each OS gets a native binary.
+  # The resulting binary is uploaded as an artifact for the Tauri job to consume.
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-sidecar:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target-triple: aarch64-apple-darwin
+            artifact-name: sidecar-macos
+            binary: hermes-backend
+          - os: windows-latest
+            target-triple: x86_64-pc-windows-msvc
+            artifact-name: sidecar-windows
+            binary: hermes-backend.exe
+          - os: ubuntu-latest
+            target-triple: x86_64-unknown-linux-gnu
+            artifact-name: sidecar-linux
+            binary: hermes-backend
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -e .[dev]
+
+      - name: Build sidecar with PyInstaller
+        run: pyinstaller --noconfirm hermes-backend.spec
+
+      - name: Rename binary for Tauri externalBin
+        shell: bash
+        run: |
+          src="dist/${{ matrix.binary }}"
+          dest="dist/hermes-backend-${{ matrix.target-triple }}${{ runner.os == 'Windows' && '.exe' || '' }}"
+          mv "$src" "$dest"
+          echo "SIDECAR_PATH=$dest" >> "$GITHUB_ENV"
+
+      - name: Upload sidecar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ env.SIDECAR_PATH }}
+          if-no-files-found: error
+          retention-days: 3
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2: Build the Tauri desktop app per OS.
+  # Downloads the matching sidecar artifact, places it in src-tauri/binaries/,
+  # then runs the Tauri build. Outputs platform installers.
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-tauri:
+    needs: build-sidecar
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target-triple: aarch64-apple-darwin
+            sidecar-artifact: sidecar-macos
+            bundle-ext: dmg
+            asset-name: hermes-macos.dmg
+          - os: windows-latest
+            target-triple: x86_64-pc-windows-msvc
+            sidecar-artifact: sidecar-windows
+            bundle-ext: msi
+            asset-name: hermes-windows.msi
+          - os: ubuntu-latest
+            target-triple: x86_64-unknown-linux-gnu
+            sidecar-artifact: sidecar-linux
+            bundle-ext: AppImage
+            asset-name: hermes-linux.AppImage
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('desktop/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            javascriptcoregtk-4.1 \
+            libjavascriptcoregtk-4.1-dev
+
+      - name: Download sidecar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.sidecar-artifact }}
+          path: desktop/src-tauri/binaries
+
+      - name: Make sidecar executable
+        if: runner.os != 'Windows'
+        run: chmod +x desktop/src-tauri/binaries/hermes-backend-${{ matrix.target-triple }}
+
+      - name: Install frontend dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Extract version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Patch tauri.conf.json version
+        shell: bash
+        run: |
+          cd desktop/src-tauri
+          if command -v jq &>/dev/null; then
+            jq --arg v "$APP_VERSION" '.version = $v' tauri.conf.json > tmp.json && mv tmp.json tauri.conf.json
+          else
+            # Windows fallback using node
+            node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('tauri.conf.json'));c.version='${{ env.APP_VERSION }}';fs.writeFileSync('tauri.conf.json',JSON.stringify(c,null,2));"
+          fi
+
+      - name: Build Tauri app
+        working-directory: desktop
+        run: npx tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Locate bundle artifacts
+        id: bundles
+        shell: bash
+        run: |
+          BUNDLE_DIR="desktop/src-tauri/target/release/bundle"
+
+          if [ "${{ matrix.bundle-ext }}" = "dmg" ]; then
+            ASSET=$(find "$BUNDLE_DIR/dmg" -name "*.dmg" | head -1)
+          elif [ "${{ matrix.bundle-ext }}" = "msi" ]; then
+            ASSET=$(find "$BUNDLE_DIR/msi" -name "*.msi" | head -1)
+          elif [ "${{ matrix.bundle-ext }}" = "AppImage" ]; then
+            ASSET=$(find "$BUNDLE_DIR/appimage" -name "*.AppImage" | head -1)
+          fi
+
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+
+          # Locate updater signature if present
+          if [ -f "${ASSET}.sig" ]; then
+            echo "sig=${ASSET}.sig" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.os }}
+          path: |
+            ${{ steps.bundles.outputs.asset }}
+            ${{ steps.bundles.outputs.sig }}
+          if-no-files-found: error
+          retention-days: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3: Create GitHub Release and upload all assets.
+  # Runs after all platform builds complete.
+  # Produces an auto-updater-compatible release.
+  # ─────────────────────────────────────────────────────────────────────────────
+  publish-release:
+    needs: build-tauri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all bundle artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bundle-*
+          path: artifacts
+          merge-multiple: false
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          mkdir -p release-assets
+
+          # macOS
+          find artifacts/bundle-macos-latest -name "*.dmg" -exec cp {} release-assets/hermes-macos.dmg \;
+          find artifacts/bundle-macos-latest -name "*.dmg.sig" -exec cp {} release-assets/hermes-macos.dmg.sig \; 2>/dev/null || true
+
+          # Windows
+          find artifacts/bundle-windows-latest -name "*.msi" -exec cp {} release-assets/hermes-windows.msi \;
+          find artifacts/bundle-windows-latest -name "*.msi.sig" -exec cp {} release-assets/hermes-windows.msi.sig \; 2>/dev/null || true
+          # Also look for NSIS exe installer as fallback
+          find artifacts/bundle-windows-latest -name "*.exe" -exec cp {} release-assets/hermes-windows-setup.exe \; 2>/dev/null || true
+          find artifacts/bundle-windows-latest -name "*.exe.sig" -exec cp {} release-assets/hermes-windows-setup.exe.sig \; 2>/dev/null || true
+
+          # Linux
+          find artifacts/bundle-ubuntu-latest -name "*.AppImage" -exec cp {} release-assets/hermes-linux.AppImage \;
+          find artifacts/bundle-ubuntu-latest -name "*.AppImage.sig" -exec cp {} release-assets/hermes-linux.AppImage.sig \; 2>/dev/null || true
+
+          echo "--- Release assets ---"
+          ls -lh release-assets/
+
+      - name: Generate updater manifest (latest.json)
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          REPO="${{ github.repository }}"
+          BASE_URL="https://github.com/${REPO}/releases/download/${GITHUB_REF_NAME}"
+
+          # Read signatures if they exist
+          MAC_SIG=""
+          WIN_SIG=""
+          LINUX_SIG=""
+
+          [ -f release-assets/hermes-macos.dmg.sig ] && MAC_SIG=$(cat release-assets/hermes-macos.dmg.sig)
+          [ -f release-assets/hermes-windows.msi.sig ] && WIN_SIG=$(cat release-assets/hermes-windows.msi.sig)
+          [ -f release-assets/hermes-linux.AppImage.sig ] && LINUX_SIG=$(cat release-assets/hermes-linux.AppImage.sig)
+
+          cat > release-assets/latest.json <<EOF
+          {
+            "version": "$VERSION",
+            "notes": "Release $VERSION",
+            "pub_date": "$DATE",
+            "platforms": {
+              "darwin-aarch64": {
+                "signature": "$MAC_SIG",
+                "url": "$BASE_URL/hermes-macos.dmg"
+              },
+              "windows-x86_64": {
+                "signature": "$WIN_SIG",
+                "url": "$BASE_URL/hermes-windows.msi"
+              },
+              "linux-x86_64": {
+                "signature": "$LINUX_SIG",
+                "url": "$BASE_URL/hermes-linux.AppImage"
+              }
+            }
+          }
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Hermes ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') || contains(github.ref_name, '-alpha') }}
+          generate_release_notes: true
+          files: release-assets/*

@@ -1,0 +1,1 @@
+- Benchmark child sessions are cloned into the event store without replaying historical events through telemetry subscribers, so child telemetry already reflects only the benchmark turn. Report KPI math must not blindly subtract the source-session baseline when child totals are smaller than the baseline.

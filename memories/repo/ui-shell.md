@@ -1,0 +1,4 @@
+- Frontend validation command: `cd desktop && npm run build`
+- Shell/view visibility should stay centralized in `desktop/src/app/components/workspace.ts` via `renderShellSummary(state)`.
+- The sidebar static system area now exposes one Settings entry; AI Profiles and MCP Connectors live as tabs inside `#settings-overlay`.
+- Legacy `open-mcp-settings` actions still route to the shared Settings workspace on the MCP tab.

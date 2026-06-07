@@ -1,0 +1,3 @@
+- AppConfig now persists `llm_profiles` plus `default_llm_profile`, but the runtime still reads `config.llm`. Keep `config.llm` synchronized to the selected default profile when saving or loading config.
+- The desktop AI settings UI edits a selected profile draft and saves the whole profile set at once. Profile deletion or switching should sync the current form back into the selected draft first to avoid losing unsaved edits.
+- The main workspace header quick-switches the default AI profile from `/api/config` state. Keep the header profile cache (`state.llmProfiles` and `state.defaultLlmProfileName`) in sync after startup, Settings saves, and any direct default-profile change.

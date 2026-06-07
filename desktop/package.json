@@ -1,0 +1,23 @@
+{
+  "name": "hermes-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node ./scripts/dev-frontend.mjs",
+    "dev:vite": "vite --host 127.0.0.1 --port 1420",
+    "backend:dev": "node ./scripts/dev-backend.mjs",
+    "backend:serve": "python ../main.py --config ../hermes.example.json --workspace .. --host 127.0.0.1 --port 8765",
+    "dev:stack": "node ./scripts/dev-stack.mjs",
+    "build": "vite build",
+    "package:backend": "node ./scripts/build-backend.mjs",
+    "tauri:dev": "node ./scripts/ensure-dev-sidecar.mjs && tauri dev",
+    "tauri:build": "npm run package:backend && tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0",
+    "concurrently": "^9.0.1",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
+  }
+}

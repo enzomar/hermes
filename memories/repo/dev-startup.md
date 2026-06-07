@@ -1,0 +1,2 @@
+- `make start` now passes a preferred backend port into `desktop/scripts/dev-stack.mjs`, which picks the first reusable or free port starting from `HERMES_API_PORT` and injects matching Vite API/WS env vars.
+- `scripts/check-deps.sh` runs with `set -euo pipefail`; avoid `((WARNINGS++))` or `((ERRORS++))` there because a warning emitted from zero can terminate the script under `set -e`.

@@ -1,0 +1,2 @@
+- MCP server delete/disable/update must mutate the live MCPClientManager runtime, not just AppConfig. Refreshing tools alone is insufficient because refresh_tools iterates the current _servers map.
+- Settings now owns MCP admin actions. Activity should remain health/observability-focused and link back to Settings instead of carrying edit/enable/delete controls.

@@ -1,0 +1,5 @@
+- Frontend entrypoint is desktop/src/main.ts; it only mounts startApp from desktop/src/app/app.ts.
+- Validated frontend build command: cd /Users/vmarafioti/devel/hermes/desktop && npm run build.
+- Split CSS entry remains desktop/src/styles.css, now aggregating files under desktop/src/styles/ with @import.
+- Core UI renderers live under desktop/src/app/components/.
+- LLM settings now normalize legacy `litellm` configs into `openai` or `local`, and the desktop UI supports `openai`, `local`, and `local-cli` modes.

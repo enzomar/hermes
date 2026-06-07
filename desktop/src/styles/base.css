@@ -1,0 +1,138 @@
+:root {
+  color-scheme: dark;
+  --bg: #101214;
+  --bg-elevated: #15181b;
+  --bg-soft: #1a1d21;
+  --bg-muted: #121519;
+  --surface: rgba(255, 255, 255, 0.035);
+  --surface-strong: rgba(255, 255, 255, 0.06);
+  --surface-accent: rgba(121, 168, 255, 0.14);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text: #f3f5f7;
+  --text-soft: #c7cdd6;
+  --text-muted: #8a929d;
+  --accent: #79a8ff;
+  --accent-soft: rgba(121, 168, 255, 0.18);
+  --success: #7fb3a3;
+  --danger: #d59698;
+  --warning: #c9ab7a;
+  --radius-xl: 28px;
+  --radius-lg: 22px;
+  --radius: 18px;
+  --radius-sm: 14px;
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 14px 30px rgba(0, 0, 0, 0.2);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --sidebar-width: 72px;
+  --sidebar-collapsed-width: 72px;
+  --inspector-width: 440px;
+  --sans: "Avenir Next", "IBM Plex Sans", "Segoe UI Variable", sans-serif;
+  --mono: "IBM Plex Mono", "SF Mono", Monaco, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top, rgba(121, 168, 255, 0.08), transparent 26%),
+    linear-gradient(180deg, #121416, #0d0f11 72%);
+  color: var(--text);
+  font-family: var(--sans);
+}
+
+body {
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: rgba(121, 168, 255, 0.32);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+details summary:focus-visible {
+  outline: 2px solid rgba(121, 168, 255, 0.75);
+  outline-offset: 2px;
+}
+
+input,
+textarea,
+select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+pre,
+code,
+.mono {
+  font-family: var(--mono);
+}
+
+#app {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+

@@ -1,0 +1,103 @@
+{
+  "database_path": ".hermes/hermes.db",
+  "skip_ssl_verify": true,
+  "llm": {
+    "provider": "openrouter",
+    "model": "nvidia/nemotron-3.5-content-safety:free",
+    "api_base": null,
+    "api_key_env": "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",
+    "custom_llm_provider": null,
+    "disable_tools": false,
+    "cli_command": null,
+    "cli_args": [],
+    "temperature": 0.2,
+    "top_p": 0.0,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "max_tokens": 2048,
+    "timeout_seconds": 90.0,
+    "system_prompt": "You are Hermes, a tool-aware AI workbench assistant. Use MCP tools when useful, describe failures plainly, and keep responses concise."
+  },
+  "llm_profiles": {
+    "Primary AI": {
+      "provider": "github-copilot",
+      "model": "openai/gpt-4.1-mini",
+      "api_base": "https://models.github.ai/inference",
+      "api_key_env": "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",
+      "custom_llm_provider": null,
+      "disable_tools": false,
+      "cli_command": null,
+      "cli_args": [],
+      "temperature": 0.2,
+      "top_p": 0.9,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "max_tokens": 2048,
+      "timeout_seconds": 90.0,
+      "system_prompt": "You are Hermes, a tool-aware AI workbench assistant. Use MCP tools when useful, describe failures plainly, and keep responses concise."
+    },
+    "Small": {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3.5-content-safety:free",
+      "api_base": null,
+      "api_key_env": "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",
+      "custom_llm_provider": null,
+      "disable_tools": false,
+      "cli_command": null,
+      "cli_args": [],
+      "temperature": 0.2,
+      "top_p": 0.0,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "max_tokens": 2048,
+      "timeout_seconds": 90.0,
+      "system_prompt": "You are Hermes, a tool-aware AI workbench assistant. Use MCP tools when useful, describe failures plainly, and keep responses concise."
+    },
+    "GitHub": {
+      "provider": "github-copilot",
+      "model": "gpt-4o-mini",
+      "api_base": "https://models.github.ai/inference",
+      "api_key_env": "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",
+      "custom_llm_provider": "openai",
+      "disable_tools": false,
+      "cli_command": null,
+      "cli_args": [],
+      "temperature": 0.2,
+      "top_p": 0.0,
+      "presence_penalty": 0.0,
+      "frequency_penalty": 0.0,
+      "max_tokens": 2048,
+      "timeout_seconds": 90.0,
+      "system_prompt": "You are PIPRPOR a Crazy chef."
+    }
+  },
+  "default_llm_profile": "Small",
+  "mcp_servers": {
+    "filesystem": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        ".."
+      ],
+      "cwd": null,
+      "env": {},
+      "url": null,
+      "headers": {},
+      "timeout_seconds": 30.0,
+      "enabled": true
+    },
+    "remote_demo": {
+      "transport": "sse",
+      "command": null,
+      "args": [],
+      "cwd": null,
+      "env": {},
+      "url": "http://127.0.0.1:8001/sse",
+      "headers": {},
+      "timeout_seconds": 30.0,
+      "enabled": true
+    }
+  }
+}

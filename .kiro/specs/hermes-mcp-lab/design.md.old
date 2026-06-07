@@ -1,0 +1,836 @@
+# Design Document: Hermes MCP Lab
+
+## Overview
+
+Hermes MCP Lab is a new top-level subsystem layered on top of the existing Hermes backend. It adds an experiment execution engine, MCP version registry, evaluation pipeline, regression detector, and a dedicated Lab UI — without modifying the existing chat, replay, or session subsystems.
+
+The design reuses Hermes's existing primitives:
+- `EventStore` / `EventBus` for trace recording (append-only, WAL SQLite)
+- `LLMEngine` for model routing (via `LiteLLM`)
+- `MCPClientManager` for live MCP server connectivity
+- `WorkbenchBridge` (FastAPI) for the HTTP/WebSocket API layer
+
+New Lab tables are added to the same SQLite database via `LabStore`, a dedicated store class that owns all DDL for Lab entities. The existing `events` and `sessions` tables are not touched.
+
+---
+
+## Architecture
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                    Tauri Desktop Shell                     │
+│  ┌──────────────┐  ┌──────────────────────────────────┐   │
+│  │  Chat UI     │  │         Lab UI (new)              │   │
+│  │  (existing)  │  │  Dataset Mgr · Experiment Builder │   │
+│  │              │  │  Run Monitor · Dashboard · Diff   │   │
+│  └──────┬───────┘  └───────────────┬──────────────────┘   │
+└─────────┼──────────────────────────┼────────────────────── ┘
+          │  WebSocket/HTTP          │  HTTP + SSE
+          ▼                          ▼
+┌────────────────────────────────────────────────────────────┐
+│                   WorkbenchBridge (FastAPI)                 │
+│  /api/...  (existing)    /api/lab/...  (new)                │
+└────────────────────────────────────────────────────────────┘
+          │                          │
+          ▼                          ▼
+┌──────────────────┐    ┌────────────────────────────────────┐
+│  Existing Core   │    │           Lab Core (new)           │
+│  EventStore      │    │  LabStore (SQLite, same DB)        │
+│  EventBus        │    │  DatasetManager                    │
+│  LLMEngine       │◄───│  MatrixEngine                      │
+│  MCPClientMgr    │◄───│  RunExecutor                       │
+│  ReplayEngine    │    │  EvaluationEngine                  │
+│  SessionStore    │    │  RegressionDetector                │
+└──────────────────┘    │  MockMCPServer                     │
+                        │  LabBridge (API router)            │
+                        └────────────────────────────────────┘
+```
+
+---
+
+## Directory Layout
+
+New files added to the repo (no existing files modified initially):
+
+```
+lab/
+  __init__.py
+  store.py           # LabStore — all DDL + SQL for Lab tables
+  dataset.py         # DatasetManager
+  registry.py        # MCPVersionRegistry
+  matrix.py          # MatrixEngine
+  executor.py        # RunExecutor
+  evaluation.py      # EvaluationEngine
+  regression.py      # RegressionDetector
+  mock_mcp.py        # MockMCPServer
+  bridge.py          # LabBridge — FastAPI router mounted on /api/lab
+  models.py          # Pydantic models for Lab entities
+```
+
+`ui/bridge.py` gains one line to mount the `LabBridge` router.
+
+---
+
+## Data Model
+
+### New SQLite Tables (managed by `LabStore`)
+
+All tables live in the existing `.hermes/hermes.db` file. Foreign keys are enforced (WAL + `PRAGMA foreign_keys=ON` already active).
+
+```sql
+-- Datasets (versioned, immutable versions)
+CREATE TABLE lab_datasets (
+    dataset_id   TEXT NOT NULL,
+    version      INTEGER NOT NULL,
+    name         TEXT NOT NULL,
+    description  TEXT NOT NULL DEFAULT '',
+    created_at   TEXT NOT NULL,
+    PRIMARY KEY (dataset_id, version)
+);
+
+-- Tasks within a dataset version
+CREATE TABLE lab_tasks (
+    task_id             TEXT PRIMARY KEY,
+    dataset_id          TEXT NOT NULL,
+    dataset_version     INTEGER NOT NULL,
+    prompt              TEXT NOT NULL,
+    expected_tool_calls BLOB NOT NULL DEFAULT '[]',   -- JSON array of tool names
+    expected_assertions BLOB NOT NULL DEFAULT '[]',   -- JSON array of assertion strings
+    FOREIGN KEY (dataset_id, dataset_version)
+        REFERENCES lab_datasets(dataset_id, version)
+);
+
+-- MCP server version registrations
+CREATE TABLE lab_mcp_versions (
+    mcp_version_id      TEXT PRIMARY KEY,
+    name                TEXT NOT NULL,
+    version_tag         TEXT NOT NULL,
+    transport           TEXT NOT NULL,   -- 'stdio' | 'sse'
+    connection_config   BLOB NOT NULL,   -- JSON
+    schema_snapshot     BLOB NOT NULL,   -- JSON, captured at registration
+    registered_at       TEXT NOT NULL,
+    UNIQUE (name, version_tag)
+);
+
+-- Tool description variants
+CREATE TABLE lab_tool_variants (
+    variant_id      TEXT PRIMARY KEY,
+    mcp_version_id  TEXT NOT NULL,
+    tool_name       TEXT NOT NULL,
+    description     TEXT NOT NULL,
+    input_schema    BLOB,               -- JSON override, nullable
+    created_at      TEXT NOT NULL,
+    FOREIGN KEY (mcp_version_id) REFERENCES lab_mcp_versions(mcp_version_id)
+);
+
+-- Model configurations
+CREATE TABLE lab_model_configs (
+    model_config_id TEXT PRIMARY KEY,
+    name            TEXT NOT NULL UNIQUE,
+    provider        TEXT NOT NULL,
+    model           TEXT NOT NULL,
+    temperature     REAL NOT NULL DEFAULT 0.0,
+    max_tokens      INTEGER NOT NULL DEFAULT 4096,
+    system_prompt   TEXT NOT NULL DEFAULT '',
+    api_key_env     TEXT,
+    api_base        TEXT,
+    created_at      TEXT NOT NULL
+);
+
+-- Workflow configurations
+CREATE TABLE lab_workflow_configs (
+    workflow_config_id  TEXT PRIMARY KEY,
+    name                TEXT NOT NULL UNIQUE,
+    system_prompt       TEXT NOT NULL DEFAULT '',
+    max_turns           INTEGER NOT NULL DEFAULT 6,
+    timeout_seconds     REAL NOT NULL DEFAULT 120.0,
+    created_at          TEXT NOT NULL
+);
+
+-- Experiments (matrix definition)
+CREATE TABLE lab_experiments (
+    experiment_id   TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'pending',  -- pending|running|completed|cancelled
+    created_at      TEXT NOT NULL,
+    completed_at    TEXT
+);
+
+-- Links between experiment and its variant selections
+CREATE TABLE lab_experiment_variants (
+    experiment_id       TEXT NOT NULL,
+    variant_type        TEXT NOT NULL,   -- 'dataset'|'model_config'|'mcp_version'|'tool_variant'|'workflow_config'
+    variant_id          TEXT NOT NULL,
+    FOREIGN KEY (experiment_id) REFERENCES lab_experiments(experiment_id)
+);
+
+-- Runs (one per Cartesian product cell)
+CREATE TABLE lab_runs (
+    run_id              TEXT PRIMARY KEY,
+    experiment_id       TEXT NOT NULL,
+    task_id             TEXT NOT NULL,
+    model_config_id     TEXT NOT NULL,
+    mcp_version_id      TEXT NOT NULL,
+    tool_variant_id     TEXT,            -- nullable: no variant override
+    workflow_config_id  TEXT NOT NULL,
+    status              TEXT NOT NULL DEFAULT 'pending',
+                                         -- pending|running|completed|failed|timed_out|cancelled
+    started_at          TEXT,
+    completed_at        TEXT,
+    FOREIGN KEY (experiment_id) REFERENCES lab_experiments(experiment_id)
+);
+
+-- Trace events for a run (sealed after run completes)
+CREATE TABLE lab_trace_events (
+    run_id      TEXT NOT NULL,
+    seq         INTEGER NOT NULL,       -- 0-based, immutable
+    event_type  TEXT NOT NULL,
+    ts          TEXT NOT NULL,
+    payload     BLOB NOT NULL,          -- JSON
+    PRIMARY KEY (run_id, seq),
+    FOREIGN KEY (run_id) REFERENCES lab_runs(run_id)
+);
+
+-- Sealed flag per run (once set, lab_trace_events for that run are immutable)
+CREATE TABLE lab_trace_sealed (
+    run_id      TEXT PRIMARY KEY,
+    sealed_at   TEXT NOT NULL,
+    FOREIGN KEY (run_id) REFERENCES lab_runs(run_id)
+);
+
+-- Evaluation results (one per run)
+CREATE TABLE lab_eval_results (
+    run_id              TEXT PRIMARY KEY,
+    experiment_id       TEXT NOT NULL,
+    classification      TEXT NOT NULL,  -- success|partial_success|failure|error
+    tool_call_accuracy  REAL NOT NULL,
+    latency_ms          REAL NOT NULL,
+    total_tokens        INTEGER NOT NULL,
+    estimated_cost_usd  REAL NOT NULL,
+    turn_count          INTEGER NOT NULL,
+    error_field         TEXT,           -- set when classification=error
+    detail              BLOB NOT NULL DEFAULT '{}',   -- JSON, raw scorer output
+    FOREIGN KEY (run_id) REFERENCES lab_runs(run_id),
+    FOREIGN KEY (experiment_id) REFERENCES lab_experiments(experiment_id)
+);
+
+-- Baselines for regression detection
+CREATE TABLE lab_baselines (
+    baseline_id     TEXT PRIMARY KEY,
+    experiment_id   TEXT NOT NULL,
+    dataset_id      TEXT NOT NULL,
+    dataset_version INTEGER NOT NULL,
+    variant_key     TEXT NOT NULL,      -- stable hash of variant combo
+    set_at          TEXT NOT NULL,
+    UNIQUE (dataset_id, dataset_version, variant_key),
+    FOREIGN KEY (experiment_id) REFERENCES lab_experiments(experiment_id)
+);
+
+-- Regression reports
+CREATE TABLE lab_regression_reports (
+    report_id       TEXT PRIMARY KEY,
+    experiment_id   TEXT NOT NULL,
+    baseline_id     TEXT NOT NULL,
+    generated_at    TEXT NOT NULL,
+    entries         BLOB NOT NULL,      -- JSON array of RegressionEntry
+    FOREIGN KEY (experiment_id) REFERENCES lab_experiments(experiment_id),
+    FOREIGN KEY (baseline_id) REFERENCES lab_baselines(baseline_id)
+);
+
+-- Mock MCP fixture sets
+CREATE TABLE lab_mock_fixtures (
+    fixture_id      TEXT PRIMARY KEY,
+    name            TEXT NOT NULL UNIQUE,
+    fallback_mode   TEXT NOT NULL DEFAULT 'error',  -- 'error'|'empty'
+    entries         BLOB NOT NULL,      -- JSON array of {tool_name, arg_hash, response}
+    created_at      TEXT NOT NULL
+);
+```
+
+**Indexes:**
+```sql
+CREATE INDEX idx_lab_runs_experiment ON lab_runs(experiment_id);
+CREATE INDEX idx_lab_runs_status ON lab_runs(status);
+CREATE INDEX idx_lab_trace_events_run ON lab_trace_events(run_id, seq);
+CREATE INDEX idx_lab_eval_results_experiment ON lab_eval_results(experiment_id);
+```
+
+---
+
+## Module Design
+
+### `lab/models.py` — Pydantic Types
+
+All wire types and internal domain models. Key classes:
+
+```python
+class TaskExpectedOutcome(BaseModel):
+    tool_calls: list[str] = []          # ordered when order matters; unordered otherwise
+    tool_calls_ordered: bool = False
+    assertions: list[str] = []          # substring/regex checks on final LLM output
+
+class Task(BaseModel):
+    task_id: str
+    dataset_id: str
+    dataset_version: int
+    prompt: str
+    expected: TaskExpectedOutcome
+
+class Dataset(BaseModel):
+    dataset_id: str
+    version: int
+    name: str
+    description: str
+    tasks: list[Task]
+    created_at: datetime
+
+class MCPVersionRegistration(BaseModel):
+    mcp_version_id: str
+    name: str
+    version_tag: str
+    transport: Literal["stdio", "sse"]
+    connection_config: dict[str, Any]
+    schema_snapshot: dict[str, Any]
+    registered_at: datetime
+
+class ToolDescriptionVariant(BaseModel):
+    variant_id: str
+    mcp_version_id: str
+    tool_name: str
+    description: str
+    input_schema: dict[str, Any] | None
+
+class ModelConfig(BaseModel):
+    model_config_id: str
+    name: str
+    provider: str
+    model: str
+    temperature: float = 0.0
+    max_tokens: int = 4096
+    system_prompt: str = ""
+    api_key_env: str | None = None
+    api_base: str | None = None
+
+class WorkflowConfig(BaseModel):
+    workflow_config_id: str
+    name: str
+    system_prompt: str = ""
+    max_turns: int = 6
+    timeout_seconds: float = 120.0
+
+class RunSpec(BaseModel):
+    run_id: str
+    experiment_id: str
+    task: Task
+    model_config: ModelConfig
+    mcp_version: MCPVersionRegistration
+    tool_variant: ToolDescriptionVariant | None
+    workflow_config: WorkflowConfig
+
+class TraceEvent(BaseModel):
+    run_id: str
+    seq: int
+    event_type: str
+    ts: datetime
+    payload: dict[str, Any]
+
+class EvaluationResult(BaseModel):
+    run_id: str
+    experiment_id: str
+    classification: Literal["success", "partial_success", "failure", "error"]
+    tool_call_accuracy: float
+    latency_ms: float
+    total_tokens: int
+    estimated_cost_usd: float
+    turn_count: int
+    error_field: str | None = None
+    detail: dict[str, Any] = {}
+
+class RegressionEntry(BaseModel):
+    variant_key: str
+    metric: str
+    baseline_value: float
+    new_value: float
+    delta_absolute: float
+    delta_relative: float
+    direction: Literal["regression", "improvement"]
+```
+
+---
+
+### `lab/store.py` — LabStore
+
+Owns all SQLite DDL for Lab tables and provides typed read/write methods. Wraps the same `sqlite3.Connection` as `EventStore` (passed in at construction) to participate in the same WAL file.
+
+```python
+class LabStore:
+    def __init__(self, conn: sqlite3.Connection, lock: threading.Lock) -> None: ...
+
+    # DDL
+    def migrate(self) -> None: ...   # idempotent CREATE TABLE IF NOT EXISTS
+
+    # Datasets
+    def create_dataset(self, dataset: Dataset) -> None: ...
+    def get_dataset(self, dataset_id: str, version: int) -> Dataset | None: ...
+    def list_datasets(self) -> list[dict]: ...
+    def delete_dataset_version(self, dataset_id: str, version: int) -> None: ...
+
+    # MCP Registry
+    def register_mcp_version(self, reg: MCPVersionRegistration) -> None: ...
+    def get_mcp_version(self, mcp_version_id: str) -> MCPVersionRegistration | None: ...
+    def list_mcp_versions(self) -> list[MCPVersionRegistration]: ...
+    def delete_mcp_version(self, mcp_version_id: str) -> None: ...
+
+    # Tool variants
+    def register_tool_variant(self, v: ToolDescriptionVariant) -> None: ...
+    def list_tool_variants(self, mcp_version_id: str) -> list[ToolDescriptionVariant]: ...
+
+    # Model configs
+    def create_model_config(self, mc: ModelConfig) -> None: ...
+    def list_model_configs(self) -> list[ModelConfig]: ...
+    def delete_model_config(self, model_config_id: str) -> None: ...
+
+    # Workflow configs
+    def create_workflow_config(self, wc: WorkflowConfig) -> None: ...
+    def list_workflow_configs(self) -> list[WorkflowConfig]: ...
+
+    # Experiments
+    def create_experiment(self, exp_id: str, name: str, variant_links: list[dict]) -> None: ...
+    def get_experiment(self, experiment_id: str) -> dict | None: ...
+    def list_experiments(self) -> list[dict]: ...
+    def set_experiment_status(self, experiment_id: str, status: str, completed_at: str | None = None) -> None: ...
+    def delete_experiment(self, experiment_id: str) -> None: ...  # cascades via app logic
+
+    # Runs
+    def create_runs(self, runs: list[RunSpec]) -> None: ...  # bulk insert, atomic
+    def get_run(self, run_id: str) -> RunSpec | None: ...
+    def list_runs(self, experiment_id: str) -> list[dict]: ...
+    def set_run_status(self, run_id: str, status: str, started_at: str | None = None, completed_at: str | None = None) -> None: ...
+
+    # Traces
+    def append_trace_event(self, event: TraceEvent) -> None: ...
+    def seal_trace(self, run_id: str) -> None: ...
+    def is_sealed(self, run_id: str) -> bool: ...
+    def get_trace(self, run_id: str) -> list[TraceEvent]: ...
+
+    # Evaluation
+    def save_eval_result(self, result: EvaluationResult) -> None: ...
+    def get_eval_result(self, run_id: str) -> EvaluationResult | None: ...
+    def list_eval_results(self, experiment_id: str) -> list[EvaluationResult]: ...
+
+    # Baselines
+    def set_baseline(self, experiment_id: str, dataset_id: str, dataset_version: int, variant_key: str) -> str: ...
+    def get_baseline(self, dataset_id: str, dataset_version: int, variant_key: str) -> dict | None: ...
+
+    # Regression reports
+    def save_regression_report(self, report: dict) -> None: ...
+    def get_regression_report(self, experiment_id: str) -> dict | None: ...
+
+    # Mock fixtures
+    def save_fixture(self, fixture: dict) -> None: ...
+    def get_fixture(self, fixture_id: str) -> dict | None: ...
+    def list_fixtures(self) -> list[dict]: ...
+
+    # Reference integrity helpers (used by delete guards)
+    def experiments_referencing_dataset(self, dataset_id: str, version: int) -> list[str]: ...
+    def experiments_referencing_mcp_version(self, mcp_version_id: str) -> list[str]: ...
+```
+
+**Construction wiring** in `WorkbenchBridge.__init__`:
+```python
+self.lab_store = LabStore(self.store._conn, self.store._lock)
+self.lab_store.migrate()
+```
+
+---
+
+### `lab/dataset.py` — DatasetManager
+
+```python
+class DatasetManager:
+    def __init__(self, lab_store: LabStore) -> None: ...
+
+    async def create(self, name: str, tasks: list[dict], description: str = "") -> Dataset: ...
+    async def update(self, dataset_id: str, tasks: list[dict], description: str | None = None) -> Dataset:
+        # creates new version, preserves prior versions
+        ...
+    async def get(self, dataset_id: str, version: int) -> Dataset: ...
+    async def list(self) -> list[dict]: ...
+    async def delete_version(self, dataset_id: str, version: int) -> None:
+        # raises if referenced by any experiment
+        ...
+    async def export_json(self, dataset_id: str, version: int) -> dict: ...
+    async def import_json(self, payload: dict) -> Dataset:
+        # validates against schema, returns new Dataset (new IDs assigned)
+        ...
+```
+
+---
+
+### `lab/registry.py` — MCPVersionRegistry
+
+```python
+class MCPVersionRegistry:
+    def __init__(self, lab_store: LabStore, mcp_manager: MCPClientManager) -> None: ...
+
+    async def register(self, name: str, version_tag: str, transport: str, connection_config: dict) -> MCPVersionRegistration:
+        # 1. validates connection_config for required fields per transport
+        # 2. connects transiently to discover schema_snapshot
+        # 3. stores immutable registration
+        ...
+    async def register_tool_variant(self, mcp_version_id: str, tool_name: str, description: str, input_schema: dict | None) -> ToolDescriptionVariant:
+        # validates tool_name exists in mcp_version schema_snapshot
+        ...
+    async def get_schema(self, mcp_version_id: str) -> dict: ...
+    async def list(self) -> list[dict]: ...
+    async def delete(self, mcp_version_id: str) -> None:
+        # raises if referenced by any experiment
+        ...
+```
+
+---
+
+### `lab/matrix.py` — MatrixEngine
+
+```python
+class MatrixEngine:
+    def __init__(self, lab_store: LabStore) -> None: ...
+
+    def preview(self, experiment_def: ExperimentDefinition) -> list[RunSpec]:
+        # returns full Cartesian product without persisting
+        ...
+
+    async def create_experiment(self, name: str, experiment_def: ExperimentDefinition) -> tuple[str, list[RunSpec]]:
+        # validates all references exist
+        # expands Cartesian product: dataset_tasks × model_configs × mcp_versions × tool_variants × workflow_configs
+        # assigns run_ids
+        # persists experiment + run list atomically in a single transaction
+        # raises if run count > 500 (hard cap)
+        ...
+```
+
+**Cartesian expansion logic:**
+
+```
+For each (task, model_config, mcp_version, tool_variant_or_none, workflow_config):
+    run_id = uuid4()
+    RunSpec(run_id, experiment_id, task, model_config, mcp_version, tool_variant, workflow_config)
+```
+
+`tool_variant` is optional per experiment — if no variants are selected, `tool_variant=None` means the registered schema description is used unmodified.
+
+---
+
+### `lab/executor.py` — RunExecutor
+
+The central execution engine. Uses `asyncio.Semaphore` to bound parallelism.
+
+```python
+class RunExecutor:
+    def __init__(
+        self,
+        lab_store: LabStore,
+        llm_engine: LLMEngine,
+        mcp_manager: MCPClientManager,
+        event_bus: EventBus,
+        max_parallel: int = 8,
+    ) -> None: ...
+
+    async def execute_experiment(self, experiment_id: str, runs: list[RunSpec]) -> None:
+        # sets experiment status → running
+        # dispatches all runs through semaphore
+        # on all complete → sets experiment status → completed
+        # publishes lab_experiment_progress events as runs complete
+        ...
+
+    async def execute_run(self, spec: RunSpec) -> None:
+        # 1. preflight: validate model_config API key is set
+        # 2. set run status → running, record started_at
+        # 3. wire up trace recorder (LabTraceRecorder wrapping lab_store)
+        # 4. build a scoped LLMEngine with spec.model_config overrides
+        # 5. connect MCP (live or mock) with tool variant overrides applied
+        # 6. run conversation loop (reuse existing LLMEngine.run_conversation)
+        # 7. on completion → seal trace, set run status → completed
+        # 8. trigger EvaluationEngine.evaluate(run_id)
+        # 9. on any exception → record error in trace, set status → failed, seal
+        # 10. on timeout → cancel task, set status → timed_out, seal
+        ...
+
+    async def cancel_experiment(self, experiment_id: str) -> None:
+        # sets cancelled flag; semaphore slot drains; in-flight runs complete
+        ...
+
+    async def rerun(self, run_id: str) -> RunSpec:
+        # clones RunSpec with new run_id and new timestamps
+        # does NOT overwrite original
+        ...
+```
+
+**Progress event** emitted on `EventBus` after each run completes:
+```json
+{
+  "event_type": "lab_run_progress",
+  "session_id": "system",
+  "payload": {
+    "experiment_id": "...",
+    "completed": 12,
+    "in_progress": 3,
+    "failed": 1,
+    "pending": 4
+  }
+}
+```
+
+The Lab UI subscribes to this via the existing `/ws` WebSocket.
+
+---
+
+### `lab/evaluation.py` — EvaluationEngine
+
+```python
+class EvaluationEngine:
+    def __init__(self, lab_store: LabStore) -> None: ...
+
+    async def evaluate(self, run_id: str) -> EvaluationResult:
+        # 1. load sealed trace from lab_store
+        # 2. load task expected outcomes
+        # 3. score tool_call_accuracy
+        # 4. score output assertion compliance
+        # 5. classify → success / partial_success / failure / error
+        # 6. compute metrics: latency_ms, total_tokens, estimated_cost_usd, turn_count
+        # 7. persist EvaluationResult
+        # 8. trigger RegressionDetector.check_if_needed(experiment_id)
+        ...
+```
+
+**Classification rules:**
+- `error`: trace has an error event, or a required field is missing from trace
+- `success`: all expected tool calls matched AND all assertions pass
+- `partial_success`: some (but not all) tool calls matched OR some assertions pass
+- `failure`: no tool calls matched AND no assertions pass (or expected non-empty and got nothing)
+
+**Tool call accuracy:**
+```python
+matched = len(set(actual_calls) & set(expected_calls))
+accuracy = matched / len(expected_calls) if expected_calls else 1.0
+```
+
+For ordered matching, use longest common subsequence ratio.
+
+**Assertion evaluation:**
+Each assertion string is treated as a Python regex pattern checked against the final LLM output via `re.search`. If no assertions are defined on the Task, assertion compliance is 1.0.
+
+---
+
+### `lab/regression.py` — RegressionDetector
+
+```python
+class RegressionDetector:
+    def __init__(self, lab_store: LabStore) -> None: ...
+
+    async def set_baseline(self, experiment_id: str) -> str:
+        # deserializes eval results for the experiment
+        # groups by variant_key
+        # stores one baseline row per (dataset, variant_key) combo
+        # replaces any existing baseline for that combo
+        ...
+
+    async def check(self, experiment_id: str) -> dict | None:
+        # for each variant_key in experiment's eval results:
+        #   look up baseline for (dataset_id, dataset_version, variant_key)
+        #   if no baseline → skip (no error)
+        #   compare success_rate and mean_latency_ms
+        #   threshold: success_rate drop > 5pp → regression
+        #   threshold: latency increase > 20% → regression
+        #   improvement: success_rate increase > 5pp OR latency drop > 20%
+        # if any regressions or improvements found → generate report, persist, return
+        # if none → return None
+        ...
+
+    def _variant_key(self, model_config_id: str, mcp_version_id: str, tool_variant_id: str | None, workflow_config_id: str) -> str:
+        # stable deterministic hash of the 4-tuple
+        # used as the grouping key for baseline comparison
+        import hashlib, json
+        return hashlib.sha256(
+            json.dumps([model_config_id, mcp_version_id, tool_variant_id, workflow_config_id], sort_keys=True).encode()
+        ).hexdigest()[:16]
+```
+
+---
+
+### `lab/mock_mcp.py` — MockMCPServer
+
+Implements the MCP stdio protocol in-process. Used when a Run's `mcp_version` is configured as `transport: mock`.
+
+```python
+class MockMCPServer:
+    def __init__(self, fixture: MockFixture) -> None: ...
+
+    def call_tool(self, tool_name: str, arguments: dict) -> dict:
+        arg_hash = self._hash_args(arguments)
+        key = (tool_name, arg_hash)
+        if key in self.fixture.entries:
+            self._record_call(tool_name, arguments, matched=True)
+            return self.fixture.entries[key]
+        self._record_call(tool_name, arguments, matched=False)
+        return self._fallback()
+
+    def _hash_args(self, arguments: dict) -> str:
+        # SHA-256 over canonical (sorted-key) JSON serialization
+        import hashlib, json
+        return hashlib.sha256(
+            json.dumps(arguments, sort_keys=True, separators=(',', ':')).encode()
+        ).hexdigest()
+
+    def get_call_log(self) -> list[dict]: ...   # accessible via Execution_Trace
+```
+
+**Fixture JSON schema:**
+```json
+{
+  "name": "my-fixture",
+  "fallback_mode": "error",
+  "entries": [
+    {
+      "tool_name": "read_file",
+      "arg_hash": "abc123...",
+      "response": { "content": [{"type": "text", "text": "hello"}] }
+    }
+  ]
+}
+```
+
+---
+
+### `lab/bridge.py` — LabBridge
+
+A FastAPI `APIRouter` with prefix `/api/lab`. Mounted in `WorkbenchBridge.__init__`:
+
+```python
+from lab.bridge import LabBridge
+lab_bridge = LabBridge(lab_store, dataset_manager, registry, matrix_engine, executor, eval_engine, regression_detector)
+app.include_router(lab_bridge.router)
+```
+
+**API Routes:**
+
+```
+# Datasets
+GET    /api/lab/datasets
+POST   /api/lab/datasets
+GET    /api/lab/datasets/{dataset_id}/versions/{version}
+PUT    /api/lab/datasets/{dataset_id}           → creates new version
+DELETE /api/lab/datasets/{dataset_id}/versions/{version}
+POST   /api/lab/datasets/import
+GET    /api/lab/datasets/{dataset_id}/versions/{version}/export
+
+# MCP Registry
+GET    /api/lab/mcp-versions
+POST   /api/lab/mcp-versions
+DELETE /api/lab/mcp-versions/{mcp_version_id}
+GET    /api/lab/mcp-versions/{mcp_version_id}/schema
+POST   /api/lab/mcp-versions/{mcp_version_id}/tool-variants
+GET    /api/lab/mcp-versions/{mcp_version_id}/tool-variants
+
+# Model configs
+GET    /api/lab/model-configs
+POST   /api/lab/model-configs
+DELETE /api/lab/model-configs/{model_config_id}
+
+# Workflow configs
+GET    /api/lab/workflow-configs
+POST   /api/lab/workflow-configs
+DELETE /api/lab/workflow-configs/{workflow_config_id}
+
+# Experiments
+GET    /api/lab/experiments
+POST   /api/lab/experiments
+GET    /api/lab/experiments/{experiment_id}
+GET    /api/lab/experiments/{experiment_id}/preview   → matrix preview, no execute
+POST   /api/lab/experiments/{experiment_id}/run
+POST   /api/lab/experiments/{experiment_id}/cancel
+DELETE /api/lab/experiments/{experiment_id}
+
+# Runs
+GET    /api/lab/experiments/{experiment_id}/runs
+GET    /api/lab/runs/{run_id}
+GET    /api/lab/runs/{run_id}/trace
+GET    /api/lab/runs/{run_id}/trace/export
+POST   /api/lab/runs/{run_id}/rerun
+
+# Evaluation
+GET    /api/lab/experiments/{experiment_id}/results
+GET    /api/lab/runs/{run_id}/result
+
+# Regression
+POST   /api/lab/experiments/{experiment_id}/set-baseline
+GET    /api/lab/experiments/{experiment_id}/regression-report
+
+# Mock fixtures
+GET    /api/lab/mock-fixtures
+POST   /api/lab/mock-fixtures
+GET    /api/lab/mock-fixtures/{fixture_id}
+DELETE /api/lab/mock-fixtures/{fixture_id}
+```
+
+---
+
+## Integration Points with Existing Code
+
+### 1. WorkbenchBridge wiring
+
+`ui/bridge.py` changes:
+- `LabStore` constructed from `self.store._conn` and `self.store._lock` (no new DB file)
+- `LabBridge` router mounted on `self.app`
+- `RunExecutor` receives `self.llm_engine`, `self.mcp_manager`, `self.bus`
+- Lab progress events flow through existing `EventBus` → broadcast to all WebSocket clients
+
+### 2. LLMEngine reuse
+
+`RunExecutor.execute_run` builds a per-run `LLMConfig` from the `ModelConfig` variant and calls `LLMEngine.run_conversation` with a `config_override`. This reuses 100% of the existing LLM routing, streaming, and tool-call loop — no duplication.
+
+### 3. MCPClientManager reuse
+
+For live MCP runs, `RunExecutor` transiently connects a server using the `MCPVersionRegistration.connection_config`. Tool variants are applied by patching the tool schema in the tool list presented to the LLM (not modifying the server itself).
+
+For mock MCP runs, `MockMCPServer` intercepts `call_tool` calls before they reach `MCPClientManager`.
+
+### 4. EventBus for progress
+
+Lab progress events use the existing `EventBus.publish` mechanism with `event_type="lab_run_progress"`. The frontend WebSocket client filters on event type — existing chat events are unaffected.
+
+### 5. Lab UI
+
+The Lab UI is a new top-level section in the Tauri frontend. It uses the same TypeScript/Vite setup and calls `/api/lab/*` endpoints via fetch. It does not modify existing chat or inspector UI components.
+
+New frontend files:
+```
+desktop/src/app/components/lab.ts          # Lab section root
+desktop/src/app/components/lab-datasets.ts
+desktop/src/app/components/lab-experiments.ts
+desktop/src/app/components/lab-run-monitor.ts
+desktop/src/app/components/lab-dashboard.ts
+desktop/src/app/components/lab-trace-diff.ts  # side-by-side trace comparison
+desktop/src/styles/lab.css
+```
+
+Navigation: a `Lab` tab is added to the existing top-level tab bar alongside the current `Chat` tab.
+
+---
+
+## Key Design Decisions
+
+**Why share the same SQLite connection?**
+The existing `EventStore` holds a single WAL-mode connection. Rather than open a second connection, `LabStore` receives the same connection + lock. This avoids WAL writer contention and keeps all Lab data in the same `.hermes/hermes.db` file — simplifying backup and export.
+
+**Why not reuse `sessions`/`events` tables for traces?**
+Lab traces are scoped to a `run_id`, not a `session_id`. They have a `seq` starting at 0 per run and a sealed flag. Reusing the sessions/events model would require adding nullable lab columns to existing tables, polluting the chat data model. Separate tables are cleaner.
+
+**Why reuse `LLMEngine` rather than writing a new one?**
+`LLMEngine` already handles streaming, tool-calling loops, local CLI, GitHub Copilot, OpenAI, and Anthropic via LiteLLM. Re-implementing this for the lab would duplicate ~400 lines and diverge over time. `config_override` makes it per-run configurable without mutation.
+
+**Why `asyncio.Semaphore` for parallelism control?**
+Runs are I/O-bound (LLM calls, MCP calls). Semaphore-based concurrency is the correct primitive — one coroutine per run, bounded by `max_parallel` (default 8, user-configurable per experiment). No threads or subprocesses needed.
+
+**Why is `tool_variant` optional per run?**
+Not every experiment varies tool descriptions. If no `ToolDescriptionVariant` is selected, the run uses the tool schema as-captured in `MCPVersionRegistration.schema_snapshot`. This avoids forcing users to define variants when they only want to compare models.

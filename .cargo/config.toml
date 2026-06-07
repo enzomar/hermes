@@ -1,0 +1,10 @@
+[registries.crates-io]
+protocol = "sparse"
+
+[http]
+timeout = 600
+multiplexing = false
+
+[net]
+retry = 10
+git-fetch-with-cli = true

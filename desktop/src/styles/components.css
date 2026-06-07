@@ -1,0 +1,571 @@
+/* ============================================
+   ATOMIC DESIGN COMPONENTS
+   Reusable UI components following atomic design
+   ============================================ */
+
+/* ─── Spacing System ─────────────────────────────────────────────────
+   8px base grid system (even numbers only)
+   ──────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Core spacing scale (8px base) */
+  --space-0: 0;
+  --space-1: 4px;   /* Half unit (rare, for fine-tuning) */
+  --space-2: 8px;   /* Base unit */
+  --space-3: 12px;  /* 1.5x base */
+  --space-4: 16px;  /* 2x base (standard padding) */
+  --space-5: 20px;  /* 2.5x base */
+  --space-6: 24px;  /* 3x base (section spacing) */
+  --space-8: 32px;  /* 4x base (large sections) */
+  --space-10: 40px; /* 5x base (major sections) */
+  --space-12: 48px; /* 6x base (page-level) */
+
+  /* Component-specific spacing */
+  --gap-tight: var(--space-1);      /* 4px - Very tight (icons, chips) */
+  --gap-compact: var(--space-2);    /* 8px - Compact (buttons, inline items) */
+  --gap-default: var(--space-3);    /* 12px - Default (cards, lists) */
+  --gap-comfortable: var(--space-4); /* 16px - Comfortable (sections) */
+  --gap-spacious: var(--space-6);   /* 24px - Spacious (major sections) */
+
+  /* Inset padding (inside containers) */
+  --inset-xs: var(--space-2);       /* 8px - Tiny containers */
+  --inset-sm: var(--space-3);       /* 12px - Small containers */
+  --inset-md: var(--space-4);       /* 16px - Medium containers (default) */
+  --inset-lg: var(--space-6);       /* 24px - Large containers */
+  --inset-xl: var(--space-8);       /* 32px - Extra large containers */
+}
+
+/* ─── ATOMS: Basic Building Blocks ──────────────────────────────────── */
+
+/* Button Base */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-compact);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Button Variants */
+.btn-primary {
+  background: linear-gradient(180deg, rgba(121, 168, 255, 0.18), rgba(121, 168, 255, 0.12));
+  border-color: rgba(121, 168, 255, 0.28);
+  color: var(--text-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(121, 168, 255, 0.24), rgba(121, 168, 255, 0.16));
+  border-color: rgba(121, 168, 255, 0.36);
+}
+
+.btn-icon {
+  padding: var(--space-2);
+  width: 36px;
+  height: 36px;
+}
+
+.btn-sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.btn-lg {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-base);
+}
+
+/* Input Base */
+.input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  transition: all 0.15s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: rgba(121, 168, 255, 0.32);
+  background: rgba(121, 168, 255, 0.06);
+}
+
+.input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  padding: var(--space-1) var(--space-2);
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.badge-accent {
+  background: var(--surface-accent);
+  border-color: rgba(121, 168, 255, 0.28);
+  color: var(--text-primary);
+}
+
+/* Icon */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  font-size: inherit;
+}
+
+.icon-sm {
+  font-size: 0.875rem;
+}
+
+.icon-md {
+  font-size: 1rem;
+}
+
+.icon-lg {
+  font-size: 1.25rem;
+}
+
+/* Label */
+.label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: var(--space-4) 0;
+}
+
+.divider-vertical {
+  width: 1px;
+  height: auto;
+  background: var(--border-subtle);
+  margin: 0 var(--space-4);
+}
+
+/* ─── MOLECULES: Simple Component Groups ───────────────────────────── */
+
+/* Card */
+.card {
+  padding: var(--inset-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.card-compact {
+  padding: var(--inset-sm);
+}
+
+.card-spacious {
+  padding: var(--inset-lg);
+}
+
+/* Stack (vertical layout) */
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.stack-tight {
+  gap: var(--gap-tight);
+}
+
+.stack-compact {
+  gap: var(--gap-compact);
+}
+
+.stack-default {
+  gap: var(--gap-default);
+}
+
+.stack-comfortable {
+  gap: var(--gap-comfortable);
+}
+
+.stack-spacious {
+  gap: var(--gap-spacious);
+}
+
+/* Inline (horizontal layout) */
+.inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.inline-tight {
+  gap: var(--gap-tight);
+}
+
+.inline-compact {
+  gap: var(--gap-compact);
+}
+
+.inline-default {
+  gap: var(--gap-default);
+}
+
+.inline-comfortable {
+  gap: var(--gap-comfortable);
+}
+
+.inline-spacious {
+  gap: var(--gap-spacious);
+}
+
+/* List Item */
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-default);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+
+.list-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.list-item.active {
+  background: var(--surface-accent);
+  border-color: rgba(121, 168, 255, 0.28);
+}
+
+/* Section Header */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.section-title {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+/* Input Group */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.input-group-horizontal {
+  flex-direction: row;
+  gap: var(--gap-compact);
+}
+
+/* Icon Button */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.icon-btn-sm {
+  width: 28px;
+  height: 28px;
+  font-size: var(--text-sm);
+}
+
+.icon-btn-lg {
+  width: 40px;
+  height: 40px;
+  font-size: 1.1rem;
+}
+
+/* ─── ORGANISMS: Complex Components ────────────────────────────────── */
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-compact);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle);
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-compact);
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-compact);
+  margin-left: auto;
+}
+
+/* Panel */
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--surface-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.panel-header {
+  flex-shrink: 0;
+  padding: var(--inset-md);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.panel-body {
+  flex: 1;
+  padding: var(--inset-md);
+  overflow-y: auto;
+}
+
+.panel-footer {
+  flex-shrink: 0;
+  padding: var(--inset-md);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  z-index: 1000;
+}
+
+.modal {
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  background: var(--surface-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: var(--inset-lg);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.modal-body {
+  flex: 1;
+  padding: var(--inset-lg);
+  overflow-y: auto;
+}
+
+.modal-footer {
+  padding: var(--inset-lg);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: var(--gap-default);
+  justify-content: flex-end;
+}
+
+/* ─── UTILITY CLASSES ───────────────────────────────────────────────── */
+
+/* Spacing utilities */
+.p-0 { padding: var(--space-0); }
+.p-1 { padding: var(--space-1); }
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
+.p-6 { padding: var(--space-6); }
+
+.px-0 { padding-left: var(--space-0); padding-right: var(--space-0); }
+.px-2 { padding-left: var(--space-2); padding-right: var(--space-2); }
+.px-3 { padding-left: var(--space-3); padding-right: var(--space-3); }
+.px-4 { padding-left: var(--space-4); padding-right: var(--space-4); }
+
+.py-0 { padding-top: var(--space-0); padding-bottom: var(--space-0); }
+.py-2 { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+.py-3 { padding-top: var(--space-3); padding-bottom: var(--space-3); }
+.py-4 { padding-top: var(--space-4); padding-bottom: var(--space-4); }
+
+.m-0 { margin: var(--space-0); }
+.m-1 { margin: var(--space-1); }
+.m-2 { margin: var(--space-2); }
+.m-3 { margin: var(--space-3); }
+.m-4 { margin: var(--space-4); }
+.m-6 { margin: var(--space-6); }
+
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-6 { margin-top: var(--space-6); }
+
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-6 { margin-bottom: var(--space-6); }
+
+/* Flexbox utilities */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-row { flex-direction: row; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.flex-1 { flex: 1; }
+.flex-shrink-0 { flex-shrink: 0; }
+
+/* Text utilities */
+.text-xs { font-size: var(--text-xs); }
+.text-sm { font-size: var(--text-sm); }
+.text-base { font-size: var(--text-base); }
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.uppercase { text-transform: uppercase; }
+
+/* Overflow utilities */
+.overflow-auto { overflow: auto; }
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.overflow-x-hidden { overflow-x: hidden; }
+
+/* Width/Height utilities */
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+/* ─── SPACING BEST PRACTICES ────────────────────────────────────────── */
+
+/*
+SPACING HIERARCHY:
+
+1. Micro (4px) - .gap-tight / --space-1
+   - Between icon and text
+   - Chip padding
+   - Very tight inline elements
+
+2. Compact (8px) - .gap-compact / --space-2
+   - Button padding (vertical)
+   - Input padding (vertical)
+   - List item gaps
+   - Inline item spacing
+
+3. Default (12px) - .gap-default / --space-3
+   - Card item gaps
+   - Form field gaps
+   - Section content spacing
+   - Standard component padding
+
+4. Comfortable (16px) - .gap-comfortable / --space-4
+   - Button padding (horizontal)
+   - Container padding
+   - Section header spacing
+   - Major component gaps
+
+5. Spacious (24px) - .gap-spacious / --space-6
+   - Between major sections
+   - Panel padding
+   - Large container padding
+
+6. Extra Spacious (32px+) - --space-8, --space-10
+   - Page-level spacing
+   - Major layout gaps
+   - Hero sections
+
+GOLDEN RULES:
+✅ Always use design tokens (var(--space-*))
+✅ Use 8px grid (multiples of 8, except --space-1 for fine-tuning)
+✅ Be consistent: same component = same spacing
+✅ Use semantic gaps (.gap-default, not hardcoded px)
+❌ Never use odd numbers (except 4px for micro adjustments)
+❌ Don't mix px and rem arbitrarily
+❌ Don't add spacing "by eye" - follow the scale
+*/
