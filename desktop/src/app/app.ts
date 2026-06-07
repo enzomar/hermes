@@ -60,6 +60,27 @@ initSessions({
   focusComposer,
 });
 
+// Initialize command palette feature module with app-level dependencies
+initCommandPalette({
+  getState: () => state,
+  executeAction,
+});
+
+// Initialize MCP settings feature module with app-level dependencies
+initMcpSettings({
+  getState: () => state,
+  requestJson,
+  refreshBootstrap,
+  runWithFeedback,
+  setFeedback,
+  setSettingsFeedback,
+  populateSettings,
+  openMcpSettings,
+  render,
+  getInputValue,
+  setInputValue,
+});
+
 const GITHUB_MODELS_API_BASE = "https://models.github.ai/inference";
 const GITHUB_MODELS_PAT_SCOPE = "models:read";
 const DEFAULT_LLM_PROFILE_NAME = "Primary AI";
@@ -408,7 +429,8 @@ const settingsLlmState: {
   selectedProfileId: "",
   defaultProfileId: "",
 };
-let settingsConfigSnapshot: Record<string, any> = {};
+// settingsConfigSnapshot is now managed in features/settingsState.ts
+import { settingsConfigSnapshot, setSettingsConfigSnapshot } from "./features/settingsState";
 
 export function startApp(root: HTMLDivElement): void {
   renderAppLayout(root);
@@ -1399,31 +1421,7 @@ async function handleFileInputChange(event: Event): Promise<void> {
   persistWorkspaceState(state);
 }
 
-function handleTransportToggle(): void {
-  const transport = document.querySelector<HTMLSelectElement>("#settings-new-server-transport")?.value;
-  const stdioField = document.querySelector<HTMLElement>("#settings-new-server-stdio");
-  const sseField = document.querySelector<HTMLElement>("#settings-new-server-sse");
-  const streamableField = document.querySelector<HTMLElement>("#settings-new-server-streamable-http");
-  const hint = document.querySelector<HTMLElement>("#settings-mcp-transport-hint");
-
-  if (stdioField) stdioField.hidden = transport !== "stdio";
-  if (sseField) sseField.hidden = transport !== "sse";
-  if (streamableField) streamableField.hidden = transport !== "streamable-http";
-
-  if (hint) {
-    switch (transport) {
-      case "stdio":
-        hint.textContent = "Launches a local process. Hermes communicates via stdin/stdout.";
-        break;
-      case "streamable-http":
-        hint.textContent = "Connects to a remote HTTP endpoint. Recommended for production servers.";
-        break;
-      case "sse":
-        hint.textContent = "Legacy transport. Use Streamable HTTP for new servers.";
-        break;
-    }
-  }
-}
+// handleTransportToggle delegated to features/mcpSettings.ts
 
 // Attachment handling delegated to features/attachments.ts
 import { readPendingAttachment } from "./features/attachments";
@@ -2120,7 +2118,7 @@ function exportBenchmarkReport(): void {
 async function populateSettings(): Promise<void> {
   try {
     const config = await requestJson<any>("/api/config");
-    settingsConfigSnapshot = config ?? {};
+    setSettingsConfigSnapshot(config ?? {});
     applyConfigState(config);
     hydrateLlmProfiles(config);
     renderSettingsMcpList(config);
@@ -2131,7 +2129,7 @@ async function populateSettings(): Promise<void> {
     const sslCheckbox = document.querySelector<HTMLInputElement>("#settings-skip-ssl");
     if (sslCheckbox) sslCheckbox.checked = Boolean(config.skip_ssl_verify);
   } catch (error) {
-    settingsConfigSnapshot = {};
+    setSettingsConfigSnapshot({});
     hydrateLlmProfiles({});
     renderSettingsMcpList({});
     renderSettingsMcpFormState({});
@@ -2234,209 +2232,7 @@ async function testLlm(): Promise<void> {
   }
 }
 
-async function addMcpServer(): Promise<void> {
-  const name = getInputValue("#settings-new-server-name").trim();
-  const transport = getInputValue("#settings-new-server-transport");
-  const editingServerName = state.ui.settingsEditingServerName;
-  const config = editingServerName ? await requestJson<any>("/api/config") : null;
-  const existingServerConfig = editingServerName ? config?.mcp_servers?.[editingServerName] : null;
-
-  if (!name) {
-    setSettingsFeedback("Connection name is required.", "error");
-    return;
-  }
-
-  if (editingServerName && !existingServerConfig) {
-    setSettingsFeedback(`Connection "${editingServerName}" could not be loaded for editing.`, "error");
-    return;
-  }
-
-  const timeout = Number(getInputValue("#settings-new-server-timeout") || "30") || 30;
-
-  const serverConfig: any = {
-    transport: transport === "streamable-http" ? "sse" : transport,  // Backend treats streamable-http as sse variant
-    enabled: existingServerConfig?.enabled !== false,
-    timeout_seconds: timeout,
-  };
-
-  if (transport === "stdio") {
-    const command = getInputValue("#settings-new-server-command").trim();
-    const argsStr = getInputValue("#settings-new-server-args").trim();
-    const cwd = getInputValue("#settings-new-server-cwd").trim();
-    const envText = (document.querySelector<HTMLTextAreaElement>("#settings-new-server-env")?.value ?? "").trim();
-
-    if (!command) {
-      setSettingsFeedback("Command is required for STDIO transport.", "error");
-      return;
-    }
-    serverConfig.command = command;
-    serverConfig.args = argsStr ? argsStr.split(/\s+/) : [];
-    serverConfig.cwd = cwd || null;
-    serverConfig.env = {};
-    if (envText) {
-      for (const line of envText.split("\n")) {
-        const eq = line.indexOf("=");
-        if (eq > 0) {
-          serverConfig.env[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
-        }
-      }
-    }
-    serverConfig.url = null;
-    serverConfig.headers = {};
-  } else if (transport === "sse") {
-    const url = getInputValue("#settings-new-server-url").trim();
-    const headersText = (document.querySelector<HTMLTextAreaElement>("#settings-new-server-headers")?.value ?? "").trim();
-
-    if (!url) {
-      setSettingsFeedback("URL is required for SSE transport.", "error");
-      return;
-    }
-    serverConfig.url = url;
-    serverConfig.headers = {};
-    if (headersText) {
-      for (const line of headersText.split("\n")) {
-        const colon = line.indexOf(":");
-        if (colon > 0) {
-          serverConfig.headers[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
-        }
-      }
-    }
-    serverConfig.command = null;
-    serverConfig.args = [];
-  } else if (transport === "streamable-http") {
-    const url = getInputValue("#settings-new-server-streamable-url").trim();
-    const headersText = (document.querySelector<HTMLTextAreaElement>("#settings-new-server-streamable-headers")?.value ?? "").trim();
-
-    if (!url) {
-      setSettingsFeedback("URL is required for Streamable HTTP transport.", "error");
-      return;
-    }
-    serverConfig.url = url;
-    serverConfig.headers = {};
-    if (headersText) {
-      for (const line of headersText.split("\n")) {
-        const colon = line.indexOf(":");
-        if (colon > 0) {
-          serverConfig.headers[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
-        }
-      }
-    }
-    serverConfig.command = null;
-    serverConfig.args = [];
-  }
-
-  const endpoint = editingServerName
-    ? `/api/config/mcp-server/${encodeURIComponent(editingServerName)}`
-    : "/api/config/mcp-server";
-  const method = editingServerName ? "PATCH" : "POST";
-  const startMessage = editingServerName ? "Saving..." : "Connecting...";
-  const successMessage = editingServerName ? `"${editingServerName}" saved.` : `"${name}" connected.`;
-
-  await runWithFeedback(startMessage, successMessage, async () => {
-    await requestJson(endpoint, {
-      method,
-      body: JSON.stringify(editingServerName ? serverConfig : { name, ...serverConfig }),
-    });
-    await requestJson("/api/mcp/refresh", { method: "POST" });
-    await refreshBootstrap(state.activeSessionId ?? undefined);
-  });
-
-  clearMcpServerForm();
-  await refreshBootstrap(state.activeSessionId ?? undefined);
-  await populateSettings();
-}
-
-async function deleteMcpServer(serverName: string): Promise<void> {
-  const confirmed = window.confirm(`Delete MCP server "${serverName}"? This will remove it from your configuration.`);
-  if (!confirmed) return;
-
-  await runWithFeedback("Deleting connection...", `Connection "${serverName}" deleted.`, async () => {
-    await requestJson(`/api/config/mcp-server/${encodeURIComponent(serverName)}`, {
-      method: "DELETE",
-    });
-    await requestJson("/api/mcp/refresh", { method: "POST" });
-    await refreshBootstrap(state.activeSessionId ?? undefined);
-  });
-
-  if (state.ui.settingsEditingServerName === serverName) {
-    clearMcpServerForm();
-  }
-  await populateSettings();
-  render();
-}
-
-async function toggleMcpServer(serverName: string): Promise<void> {
-  // Get current config
-  const config = await requestJson<any>("/api/config");
-  const serverConfig = config.mcp_servers?.[serverName];
-  if (!serverConfig) {
-    setFeedback(`Server "${serverName}" not found.`, "error");
-    return;
-  }
-
-  const newEnabled = !serverConfig.enabled;
-  const action = newEnabled ? "enabled" : "disabled";
-
-  await runWithFeedback(`${newEnabled ? "Enabling" : "Disabling"} connection...`, `Connection "${serverName}" ${action}.`, async () => {
-    await requestJson(`/api/config/mcp-server/${encodeURIComponent(serverName)}`, {
-      method: "PATCH",
-      body: JSON.stringify({ enabled: newEnabled }),
-    });
-    await requestJson("/api/mcp/refresh", { method: "POST" });
-    await refreshBootstrap(state.activeSessionId ?? undefined);
-  });
-
-  await populateSettings();
-  render();
-}
-
-async function editMcpServer(serverName: string): Promise<void> {
-  // Get current config
-  const config = await requestJson<any>("/api/config");
-  const serverConfig = config.mcp_servers?.[serverName];
-  if (!serverConfig) {
-    setFeedback(`Server "${serverName}" not found.`, "error");
-    return;
-  }
-
-  settingsConfigSnapshot = config ?? {};
-  state.ui.settingsEditingServerName = serverName;
-
-  openMcpSettings();
-
-  // Pre-fill the form with current values
-  setInputValue("#settings-new-server-name", serverName);
-  setInputValue("#settings-new-server-transport", serverConfig.transport || "stdio");
-  setInputValue("#settings-new-server-timeout", String(serverConfig.timeout_seconds ?? 30));
-
-  if (serverConfig.transport === "stdio") {
-    setInputValue("#settings-new-server-command", serverConfig.command || "");
-    setInputValue("#settings-new-server-args", (serverConfig.args || []).join(" "));
-    setInputValue("#settings-new-server-cwd", serverConfig.cwd || "");
-    const envEl = document.querySelector<HTMLTextAreaElement>("#settings-new-server-env");
-    if (envEl) {
-      envEl.value = Object.entries(serverConfig.env || {}).map(([k, v]) => `${k}=${v}`).join("\n");
-    }
-  } else {
-    setInputValue("#settings-new-server-url", serverConfig.url || "");
-    const headersEl = document.querySelector<HTMLTextAreaElement>("#settings-new-server-headers");
-    if (headersEl) {
-      headersEl.value = Object.entries(serverConfig.headers || {}).map(([k, v]) => `${k}: ${v}`).join("\n");
-    }
-    // Also fill streamable HTTP fields (same data)
-    setInputValue("#settings-new-server-streamable-url", serverConfig.url || "");
-    const streamHeadersEl = document.querySelector<HTMLTextAreaElement>("#settings-new-server-streamable-headers");
-    if (streamHeadersEl) {
-      streamHeadersEl.value = Object.entries(serverConfig.headers || {}).map(([k, v]) => `${k}: ${v}`).join("\n");
-    }
-  }
-
-  handleTransportToggle();
-  renderSettingsMcpList(settingsConfigSnapshot);
-  renderSettingsMcpFormState(config);
-
-  setSettingsFeedback(`Editing "${serverName}".`, "info");
-}
+// addMcpServer, deleteMcpServer, toggleMcpServer, editMcpServer delegated to features/mcpSettings.ts
 
 async function testMcp(): Promise<void> {
   setSettingsFeedback("Testing connected tools...", "info");
@@ -2472,55 +2268,7 @@ async function testMcp(): Promise<void> {
   }
 }
 
-// ─── Palette ─────────────────────────────────────────────────────────────────
-
-function getFilteredPaletteCommands(): PaletteCommand[] {
-  const query = state.ui.paletteQuery.trim().toLowerCase();
-  const commands = getPaletteCommands();
-  if (!query) return commands.slice(0, 12);
-  return commands.filter((c) => [c.title, c.subtitle, ...c.keywords].join(" ").toLowerCase().includes(query)).slice(0, 12);
-}
-
-function getPaletteCommands(): PaletteCommand[] {
-  const commands: PaletteCommand[] = [
-    { id: "new-session", title: "New Conversation", subtitle: "Start a conversation", keywords: ["create", "new", "session", "conversation", "chat"], shortcut: getShortcutLabel(state.ui.platform, "newSession"), run: () => executeAction("create-session") },
-    { id: "refresh-tools", title: "Refresh Connected Tools", subtitle: "Reload connected tools and their availability", keywords: ["refresh", "tools", "mcp", "servers", "connections"], shortcut: getShortcutLabel(state.ui.platform, "refreshTools"), run: () => executeAction("refresh-tools") },
-    { id: "focus-prompt", title: "Focus Prompt", subtitle: "Jump to the composer", keywords: ["focus", "prompt", "composer"], shortcut: getShortcutLabel(state.ui.platform, "focusPrompt"), run: () => executeAction("focus-composer") },
-    { id: "open-benchmark", title: "Benchmark Prompt", subtitle: "Compare the next prompt across multiple AI targets", keywords: ["benchmark", "compare", "models", "llm"], run: () => executeAction("open-benchmark") },
-    { id: "open-settings", title: "Settings", subtitle: "Configure AI, connected tools, and preferences", keywords: ["settings", "config", "llm", "model", "api", "tools"], shortcut: "⌘,", run: () => executeAction("open-settings") },
-    { id: "open-tools", title: "Connected Tools", subtitle: "Open tool connections and capability settings", keywords: ["tools", "mcp", "connections"], run: () => executeAction("open-mcp-settings") },
-  ];
-
-  for (const sessionId of state.ui.recentSessionIds) {
-    const session = state.sessions.find((s) => s.session_id === sessionId);
-    if (!session) continue;
-    commands.push({
-      id: `session-${sessionId}`,
-      title: String(session.title ?? "Untitled"),
-      subtitle: `Open conversation ${String(sessionId).slice(0, 8)}`,
-      keywords: ["session", "conversation", String(session.title ?? ""), sessionId],
-      run: () => executeAction("switch-session", { sessionId }),
-    });
-  }
-
-  return commands;
-}
-
-function openCommandPalette(initialQuery = ""): void {
-  state.ui.paletteOpen = true;
-  state.ui.paletteQuery = initialQuery;
-  state.ui.paletteIndex = 0;
-  renderCommandPalette(state, getFilteredPaletteCommands(), getShortcutLabel(state.ui.platform, "palette"));
-  requestAnimationFrame(() => document.querySelector<HTMLInputElement>("#command-input")?.focus());
-}
-
-function closeCommandPalette(): void {
-  if (!state.ui.paletteOpen) return;
-  state.ui.paletteOpen = false;
-  state.ui.paletteQuery = "";
-  state.ui.paletteIndex = 0;
-  renderCommandPalette(state, getFilteredPaletteCommands(), getShortcutLabel(state.ui.platform, "palette"));
-}
+// ─── Palette — delegated to features/commandPalette.ts ───────────────────────
 
 // ─── Context menu ────────────────────────────────────────────────────────────
 
@@ -2574,6 +2322,31 @@ import {
   persistSessionTitle,
   clearInlineSessionRename,
 } from "./features/sessions";
+
+// Command palette delegated to features/commandPalette.ts
+import {
+  initCommandPalette,
+  openCommandPalette,
+  closeCommandPalette,
+  getFilteredPaletteCommands,
+  getPaletteCommands,
+} from "./features/commandPalette";
+
+// MCP settings delegated to features/mcpSettings.ts
+import {
+  initMcpSettings,
+  addMcpServer,
+  deleteMcpServer,
+  toggleMcpServer,
+  editMcpServer,
+  clearMcpServerForm,
+  handleTransportToggle,
+  renderSettingsMcpList,
+  renderSettingsMcpFormState,
+  renderMcpConnectionCard,
+  getMcpConnectionTarget,
+  getMcpConnectionStatus,
+} from "./features/mcpSettings";
 
 function openSupport(): void {
   toggleUtilityOverlay("#support-overlay", true);
@@ -3742,224 +3515,9 @@ async function refreshMcpInspector(): Promise<void> {
   renderMcpInspectorView();
 }
 
-function renderMcpConnectionCard(server: any): string {
-  const status = getMcpConnectionStatus(server);
-  const target = getMcpConnectionTarget(server);
-  const serverName = String(server?.name ?? "Unnamed MCP server");
-  return `
-    <article class="mcp-connection-card">
-      <div class="mcp-connection-header">
-        <div class="mcp-connection-copy">
-          <span class="mcp-connection-name">${escapeHtml(serverName)}</span>
-          <p class="settings-note">${escapeHtml(status.detail)}</p>
-        </div>
-        <span class="mcp-connection-status ${escapeHtml(status.tone)}">
-          <span aria-hidden="true">●</span> ${escapeHtml(status.label)}
-        </span>
-      </div>
-      <div class="settings-overview-grid settings-overview-grid-compact">
-        ${renderSettingsMetricCard("Transport", String(server?.transport ?? "unknown"), target || "No runtime target reported.")}
-        ${renderSettingsMetricCard("Tools", String(Number(server?.tool_count ?? 0)), Number(server?.tool_count ?? 0) ? "Visible to Hermes." : "No tools reported yet.")}
-        ${renderSettingsMetricCard("Runtime", server?.connected ? "Live" : "Waiting", server?.error ? String(server.error) : "Use Refresh to re-check this connection.")}
-      </div>
-      <div class="mcp-connection-actions">
-        <button type="button" class="inline-action" data-action="refresh-mcp-inspector">${server?.connected ? "Refresh runtime" : "Connect runtime"}</button>
-        <button type="button" class="inline-action" data-action="edit-mcp-server" data-server-name="${escapeHtml(serverName)}">Manage</button>
-      </div>
-    </article>
-  `;
-}
-
-function getMcpConnectionStatus(server: any): { label: string; tone: string; detail: string } {
-  if (server?.error) {
-    return {
-      label: "Error",
-      tone: "disconnected",
-      detail: String(server.error),
-    };
-  }
-  if (server?.connected) {
-    return {
-      label: "Connected",
-      tone: "connected",
-      detail: `${Number(server?.tool_count ?? 0)} tool${Number(server?.tool_count ?? 0) === 1 ? "" : "s"} available to Hermes.`,
-    };
-  }
-  return {
-    label: "Waiting",
-    tone: "idle",
-    detail: "Configured, but Hermes has not connected to this runtime yet.",
-  };
-}
-
-function renderSettingsMetricCard(label: string, value: string, detail: string): string {
-  return `
-    <article class="settings-overview-card settings-overview-card-compact">
-      <span class="settings-overview-label">${escapeHtml(label)}</span>
-      <strong>${escapeHtml(value)}</strong>
-      <p>${escapeHtml(detail)}</p>
-    </article>
-  `;
-}
-
-function renderSettingsMcpList(config: any): void {
-  const list = document.querySelector<HTMLElement>("#settings-mcp-list");
-  const resolvedConfig = config && Object.keys(config).length ? config : settingsConfigSnapshot;
-  if (!list) return;
-
-  const configuredEntries = Object.entries(resolvedConfig?.mcp_servers ?? {}) as Array<[string, any]>;
-  const liveServers = new Map(state.servers.map((server) => [String(server.name), server]));
-
-  list.innerHTML = configuredEntries.length
-    ? configuredEntries
-        .map(([name, serverConfig]) => {
-          const live = liveServers.get(name);
-          const enabled = serverConfig.enabled !== false;
-          const editing = state.ui.settingsEditingServerName === name;
-          const statusLabel = !enabled
-            ? "disabled"
-            : live?.connected
-              ? "connected"
-              : live?.error
-                ? "error"
-                : "not connected";
-          const statusClass = !enabled ? "" : live?.connected ? "ok" : live?.error ? "error" : "idle";
-          const detail = !enabled
-            ? "Disabled in config."
-            : live?.error
-              ? String(live.error)
-              : live?.connected
-                ? `${Number(live.tool_count ?? 0)} tools available.`
-                : "Configured but not currently connected.";
-          const target = getMcpConnectionTarget(serverConfig);
-          const transport = String(serverConfig.transport ?? "stdio").toUpperCase();
-          const meta = target
-            ? `${transport} • ${target}`
-            : `${transport} • ${detail}`;
-
-          return `
-            <button type="button" class="settings-mcp-nav-item${editing ? " selected" : ""}" data-action="edit-mcp-server" data-server-name="${escapeHtml(name)}">
-              <div class="settings-rail-item-main">
-                <div class="settings-mcp-copy settings-rail-item-copy">
-                  <span class="settings-mcp-name">${escapeHtml(name)}</span>
-                  <p class="settings-mcp-detail settings-rail-item-meta" title="${escapeHtml(meta)}">${escapeHtml(meta)}</p>
-                </div>
-                <span class="settings-mcp-status settings-rail-item-status ${statusClass}">${escapeHtml(statusLabel)}</span>
-              </div>
-            </button>
-          `;
-        })
-        .join("")
-    : `<p class="empty small-empty">No MCP connections saved yet. Use Add Connection to create the first one.</p>`;
-}
-
-function renderSettingsMcpFormState(config: any): void {
-  const title = document.querySelector<HTMLElement>("#settings-mcp-form-title");
-  const submit = document.querySelector<HTMLButtonElement>("#settings-save-mcp");
-  const cancel = document.querySelector<HTMLButtonElement>("#settings-cancel-mcp");
-  const nameInput = document.querySelector<HTMLInputElement>("#settings-new-server-name");
-  const editorTitle = document.querySelector<HTMLElement>("#settings-mcp-editor-title");
-  const editorNote = document.querySelector<HTMLElement>("#settings-mcp-editor-note");
-  const editorActions = document.querySelector<HTMLElement>("#settings-mcp-editor-actions");
-  const summary = document.querySelector<HTMLElement>("#settings-mcp-connection-summary");
-
-  if (!title || !submit || !cancel || !nameInput) {
-    return;
-  }
-
-  const resolvedConfig = config && Object.keys(config).length ? config : settingsConfigSnapshot;
-  const editingServerName = state.ui.settingsEditingServerName;
-  const knownServer = editingServerName ? resolvedConfig?.mcp_servers?.[editingServerName] : null;
-  if (editingServerName && !knownServer) {
-    state.ui.settingsEditingServerName = null;
-  }
-
-  const activeEditName = state.ui.settingsEditingServerName;
-  const editing = Boolean(activeEditName);
-  const liveServer = activeEditName
-    ? state.servers.find((server) => String(server.name ?? "") === activeEditName) ?? null
-    : null;
-  const enabled = knownServer?.enabled !== false;
-  const target = getMcpConnectionTarget(knownServer);
-  const detail = !editing
-    ? "Create a connection, then save it into the left rail for reuse."
-    : !enabled
-      ? "This connection is disabled in config. Enable it when you want Hermes to expose its tools."
-      : liveServer?.error
-        ? String(liveServer.error)
-        : liveServer?.connected
-          ? `${Number(liveServer.tool_count ?? 0)} tool${Number(liveServer.tool_count ?? 0) === 1 ? "" : "s"} available right now.`
-          : "Configured, but Hermes has not connected to it yet.";
-
-  title.textContent = editing ? `Edit Connection: ${activeEditName}` : "Add Connection";
-  submit.textContent = editing ? "Save Connection" : "Add Connection";
-  cancel.hidden = !editing;
-  nameInput.readOnly = editing;
-  nameInput.setAttribute("aria-readonly", editing ? "true" : "false");
-
-  if (editorTitle) {
-    editorTitle.textContent = editing ? activeEditName ?? "Selected Connection" : "New Connection";
-  }
-  if (editorNote) {
-    editorNote.textContent = editing
-      ? `This editor owns the transport, target, and runtime state for ${activeEditName}.`
-      : "Pick a transport, define its target, then save the connection into the left rail.";
-  }
-  if (editorActions) {
-    editorActions.innerHTML = editing && activeEditName
-      ? `
-          <button type="button" class="inline-action" data-action="toggle-mcp-server" data-server-name="${escapeHtml(activeEditName)}">${enabled ? "Disable" : "Enable"}</button>
-          <button type="button" class="inline-action destructive" data-action="delete-mcp-server" data-server-name="${escapeHtml(activeEditName)}">Delete</button>
-        `
-      : "";
-  }
-  if (summary) {
-    summary.innerHTML = editing && activeEditName
-      ? [
-          renderSettingsMetricCard("Transport", String(knownServer?.transport ?? "stdio"), target || "No target configured."),
-          renderSettingsMetricCard("Health", liveServer?.connected ? "Connected" : enabled ? "Waiting" : "Disabled", detail),
-          renderSettingsMetricCard("Tools", String(Number(liveServer?.tool_count ?? 0)), liveServer?.connected ? "Visible to Hermes right now." : "Expose tools by enabling and refreshing this connection."),
-        ].join("")
-      : [
-          renderSettingsMetricCard("Transport", "stdio or SSE", "Launch a local process or point Hermes at a remote SSE endpoint."),
-          renderSettingsMetricCard("Selection", "No connection selected", "Choose a saved connection from the left rail to edit it."),
-          renderSettingsMetricCard("Live Tools", String(state.tools.length), state.tools.length ? "Currently available to Hermes." : "No connected tools yet."),
-        ].join("");
-  }
-}
-
-function clearMcpServerForm(): void {
-  state.ui.settingsEditingServerName = null;
-  setInputValue("#settings-new-server-name", "");
-  setInputValue("#settings-new-server-transport", "stdio");
-  setInputValue("#settings-new-server-command", "");
-  setInputValue("#settings-new-server-args", "");
-  setInputValue("#settings-new-server-cwd", "");
-  setInputValue("#settings-new-server-url", "");
-  setInputValue("#settings-new-server-streamable-url", "");
-  setInputValue("#settings-new-server-timeout", "30");
-  const envEl = document.querySelector<HTMLTextAreaElement>("#settings-new-server-env");
-  if (envEl) envEl.value = "";
-  const headersEl = document.querySelector<HTMLTextAreaElement>("#settings-new-server-headers");
-  if (headersEl) headersEl.value = "";
-  const streamHeadersEl = document.querySelector<HTMLTextAreaElement>("#settings-new-server-streamable-headers");
-  if (streamHeadersEl) streamHeadersEl.value = "";
-  renderSettingsMcpList(settingsConfigSnapshot);
-  renderSettingsMcpFormState(settingsConfigSnapshot);
-  handleTransportToggle();
-}
-
-function getMcpConnectionTarget(serverConfig: any): string {
-  if (!serverConfig) {
-    return "";
-  }
-
-  if (serverConfig.transport === "stdio") {
-    return [serverConfig.command, ...(Array.isArray(serverConfig.args) ? serverConfig.args : [])].filter(Boolean).join(" ");
-  }
-
-  return String(serverConfig.url ?? serverConfig.endpoint ?? "");
-}
+// renderMcpConnectionCard, getMcpConnectionStatus, renderSettingsMetricCard,
+// renderSettingsMcpList, renderSettingsMcpFormState, clearMcpServerForm,
+// getMcpConnectionTarget delegated to features/mcpSettings.ts
 
 function normalizeLlmProvider(provider: unknown, llm: Record<string, unknown> = {}): LlmProviderMode {
   const raw = String(provider ?? "openai").trim().toLowerCase();

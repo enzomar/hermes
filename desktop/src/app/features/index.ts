@@ -32,3 +32,28 @@ export {
   persistSessionTitle,
   clearInlineSessionRename,
 } from "./sessions";
+export {
+  initCommandPalette,
+  openCommandPalette,
+  closeCommandPalette,
+  getFilteredPaletteCommands,
+  getPaletteCommands,
+} from "./commandPalette";
+export {
+  settingsConfigSnapshot,
+  setSettingsConfigSnapshot,
+} from "./settingsState";
+export {
+  initMcpSettings,
+  addMcpServer,
+  deleteMcpServer,
+  toggleMcpServer,
+  editMcpServer,
+  clearMcpServerForm,
+  handleTransportToggle,
+  renderSettingsMcpList,
+  renderSettingsMcpFormState,
+  renderMcpConnectionCard,
+  getMcpConnectionTarget,
+  getMcpConnectionStatus,
+} from "./mcpSettings";

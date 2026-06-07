@@ -1,265 +1,1266 @@
+
+Claude finished the response
+
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <title>Hermes — MCP Control Plane for AI Workflows</title> <meta name="description" content="Hermes is a local-first control plane for MCP servers, LLM d
+
+pasted
+
+Can you improve this landing page?
+
+I want someting modern , clearn and professional. The audience are IT professional ( Dev, Architect, Product Manager, Manager, Directors, Angel Investors )
+
+23:52
+
+Reading frontend design skill
+Reading frontend design skill
+Now I have a clear picture. Let me design something distinctive for this technical/professional audience — sharp, editorial dark theme with industrial precision. Think the aesthetic of a Bloomberg terminal meets modern DevTools: authoritative, data-dense but breathable, with purposeful motion.
+
+
+Created a file, read a file
+Created a file, read a file
+Here's the redesigned landing page. Here's what changed and why:
+
+Design direction — Precision-dark editorial. Think Bloomberg Terminal meets modern DevTools. Authoritative for decision-makers, technical enough for engineers.
+
+Key improvements:
+
+Typography — Switched to Syne (a strong, geometric display face) paired with JetBrains Mono for code elements. Instantly signals a developer-native product.
+Hero — Split layout with a live terminal window mock on the right. The terminal shows real commands (bench, trace, inspect-mcp) so engineers immediately understand the product. A floating "100% local" badge addresses the security concern upfront.
+Structured narrative — Sections are numbered (01 Problem → 02 Features → 03 Integrations → 04 Workflow → Download), which mirrors how architects and PMs think through an evaluation.
+Problem section — Added a dedicated pain-point section before features. Investors and directors need to see the "why" before the "what."
+Feature grid — Grid-bordered tile layout with monospace tags (mcp · stdio · http) that resonate with technical readers without alienating non-technical ones.
+Scrolling provider strip — Auto-scrolling ticker of all 14+ providers with a pause-on-hover interaction.
+Micro-animations — Subtle fade-up on scroll, pulse on the live status dot, cursor blink in the terminal, hover glow on cards. All CSS — no heavy libraries.
+No cloud / no account messaging — Reinforced at multiple touchpoints (nav CTA, hero, download section) since security-conscious teams scan for this.
+
+Hermes landing
+Code · HTML 
+i do not have a cli,
+
+7 Jun
+Got it! Let me update the hero section to remove the CLI terminal visual and the $ hermes start command, replacing it with something that better reflects a desktop GUI app.
+
+
+Viewed 3 files
+Viewed 3 files
+Now I'll replace the terminal mock with a proper GUI app mockup — showing a desktop window with panels, tabs, and UI elements that represent the actual Hermes interface.
+
+
+Replace terminal CSS with GUI app window CSS
+Replace terminal CSS with GUI app window CSS
+Now replace the terminal HTML with the GUI app mockup:
+
+
+Replace terminal HTML with GUI app window mockup
+Replace terminal HTML with GUI app window mockup
+Also update the "How it works" step 1 to remove the CLI reference:
+
+
+Edited a file, read a file
+Edited a file, read a file
+Done! The hero visual is now a desktop app mockup showing:
+
+A macOS-style window with title bar, traffic-light dots, and a tab bar (MCP Inspector / Benchmark / Trace / Lab)
+A sidebar listing connected MCP servers with live status indicators (green/amber dots)
+A split benchmark panel showing GPT-4o vs Claude Sonnet side-by-side — with response previews, latency, token count, and cost per call
+This immediately communicates "GUI desktop workbench" rather than a developer CLI tool, which is much better for your broader audience of PMs, architects, directors, and investors.
+
+
+Hermes landing
+Code · HTML 
+
+
+
+
+
+Claude is AI and can make mistakes. Please double-check responses.
+
+
+raw
+Hermes landing · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hermes — MCP Experimentation &amp; AI Workbench</title>
-  <meta name="description" content="Hermes is a local-first workbench for MCP servers, LLM experimentation, and AI observability. Inspect tools, chat with models, and benchmark providers." />
-  <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
-  <link rel="apple-touch-icon" sizes="128x128" href="apple-touch-icon.png" />
-  <meta property="og:title" content="Hermes — MCP &amp; AI Workbench" />
-  <meta property="og:description" content="Inspect MCP servers, chat with LLMs, benchmark providers — all locally." />
-  <meta property="og:image" content="hermes-logo.png" />
-  <meta property="og:type" content="website" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #101214;
-      --bg-2: #15181b;
-      --bg-card: #1a1d21;
-      --border: rgba(255,255,255,0.08);
-      --border-hover: rgba(255,255,255,0.14);
-      --text: #f3f5f7;
-      --text-soft: #c7cdd6;
-      --text-muted: #8a929d;
-      --accent: #79a8ff;
-      --accent-glow: rgba(121,168,255,0.18);
-      --accent-subtle: rgba(121,168,255,0.08);
-      --green: #7fb3a3;
-      --radius: 14px;
-      --radius-lg: 22px;
-      --font: 'DM Sans', -apple-system, sans-serif;
-      --mono: 'DM Mono', 'SF Mono', monospace;
-    }
-    html { scroll-behavior: smooth; }
-    body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-    .container { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
-    .tag { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); background: var(--accent-subtle); border: 1px solid rgba(121,168,255,0.2); padding: 4px 12px; border-radius: 99px; }
-    .tag-dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; }
-
-    /* NAV */
-    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 14px 0; background: rgba(16,18,20,0.85); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); }
-    .nav-inner { display: flex; align-items: center; justify-content: space-between; }
-    .nav-logo { font-size: 18px; font-weight: 600; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 8px; letter-spacing: -0.02em; }
-    .nav-logo-mark { width: 28px; height: 28px; border-radius: 7px; overflow: hidden; flex-shrink: 0; }
-    .nav-logo-mark img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; }
-    .nav-links { display: flex; align-items: center; gap: 4px; list-style: none; }
-    .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 8px; transition: color 0.2s, background 0.2s; }
-    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.04); }
-    .nav-cta { color: var(--accent) !important; background: var(--accent-subtle) !important; border: 1px solid rgba(121,168,255,0.25) !important; font-weight: 500 !important; }
-    .nav-cta:hover { background: rgba(121,168,255,0.14) !important; }
-
-    /* HERO */
-    #hero { position: relative; padding: 160px 0 100px; min-height: 90vh; display: flex; align-items: center; overflow: hidden; }
-    .hero-glow { position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 700px; height: 700px; border-radius: 50%; background: radial-gradient(circle, rgba(121,168,255,0.08) 0%, transparent 60%); pointer-events: none; }
-    .hero-content { position: relative; z-index: 2; max-width: 680px; }
-    .hero-headline { font-size: clamp(38px, 6vw, 64px); font-weight: 600; line-height: 1.08; letter-spacing: -0.035em; color: var(--text); margin-bottom: 20px; }
-    .hero-headline em { font-style: normal; color: var(--accent); }
-    .hero-sub { font-size: 17px; font-weight: 300; color: var(--text-muted); line-height: 1.7; max-width: 520px; margin-bottom: 36px; }
-    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font); font-size: 13px; font-weight: 500; padding: 10px 20px; border-radius: 10px; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s; }
-    .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 12px rgba(121,168,255,0.3); }
-    .btn-primary:hover { background: #8fb5ff; transform: translateY(-1px); }
-    .btn-secondary { background: transparent; color: var(--text-soft); border: 1px solid var(--border-hover); }
-    .btn-secondary:hover { background: rgba(255,255,255,0.04); }
-    .hero-terminal { margin-top: 48px; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; font-family: var(--mono); font-size: 13px; color: var(--text-muted); display: inline-flex; gap: 8px; }
-    .hero-terminal .p { color: var(--green); }
-    .hero-terminal .c { color: var(--text-soft); }
-
-    /* SECTIONS */
-    section { padding: 100px 0; }
-    .section-header { margin-bottom: 56px; }
-    .section-title { font-size: clamp(26px, 3.5vw, 38px); font-weight: 600; letter-spacing: -0.025em; margin-top: 12px; line-height: 1.15; }
-    .section-sub { color: var(--text-muted); font-size: 15px; font-weight: 300; max-width: 460px; margin-top: 10px; line-height: 1.65; }
-    .sep { border: none; border-top: 1px solid var(--border); margin: 0; }
-
-    /* FEATURES */
-    #features { background: var(--bg-2); }
-    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-    .feature-card { background: var(--bg-card); padding: 32px 28px; transition: background 0.2s; }
-    .feature-card:hover { background: #1e2228; }
-    .feature-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--accent-subtle); border: 1px solid rgba(121,168,255,0.2); display: flex; align-items: center; justify-content: center; color: var(--accent); margin-bottom: 16px; }
-    .feature-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
-    .feature-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
-
-    /* PROVIDERS */
-    #providers { background: var(--bg); }
-    .providers-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 32px; }
-    .provider-pill { font-family: var(--mono); font-size: 12px; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border); padding: 6px 14px; border-radius: 99px; }
-
-    /* CTA */
-    #cta { background: var(--bg-2); }
-    .cta-box { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 56px; text-align: center; }
-    .cta-box h2 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 12px; }
-    .cta-box p { color: var(--text-muted); font-size: 15px; margin-bottom: 28px; max-width: 440px; margin-inline: auto; }
-
-    /* FOOTER */
-    footer { background: var(--bg); padding: 40px 0 28px; border-top: 1px solid var(--border); }
-    .footer-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
-    .footer-logo { font-size: 15px; font-weight: 600; color: var(--text); }
-    .footer-copy { font-size: 11px; color: var(--text-muted); font-family: var(--mono); margin-top: 4px; }
-    .footer-links { display: flex; gap: 20px; }
-    .footer-links a { color: var(--text-muted); text-decoration: none; font-size: 12px; transition: color 0.2s; }
-    .footer-links a:hover { color: var(--text); }
-
-    @media (max-width: 860px) { .features-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 560px) { .features-grid { grid-template-columns: 1fr; } .nav-links { display: none; } }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Hermes — MCP Control Plane for AI Workflows</title>
+<meta name="description" content="Debug MCP servers, compare LLMs side-by-side, and trace every AI execution — in one local-first workbench."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+ 
+<style>
+/* ─── TOKENS ─────────────────────────────────────────── */
+:root {
+  --bg:        #080a0d;
+  --bg2:       #0d1117;
+  --bg3:       #111820;
+  --surface:   #141c26;
+  --surface2:  #1a2535;
+  --text:      #e8edf5;
+  --text2:     #8a97aa;
+  --text3:     #4d5a6b;
+  --accent:    #3b82f6;
+  --accent2:   #60a5fa;
+  --teal:      #0ea5e9;
+  --green:     #22c55e;
+  --amber:     #f59e0b;
+  --border:    rgba(255,255,255,0.06);
+  --border2:   rgba(59,130,246,0.2);
+  --mono:      'JetBrains Mono', monospace;
+  --sans:      'Syne', sans-serif;
+  --r:         8px;
+}
+ 
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+ 
+html { scroll-behavior: smooth; }
+ 
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+ 
+/* ─── SCROLLBAR ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 2px; }
+ 
+/* ─── LAYOUT ─────────────────────────────────────────── */
+.wrap { max-width: 1140px; margin: 0 auto; padding: 0 32px; }
+ 
+/* ─── NAV ────────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 0 32px;
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(8,10,13,0.85);
+  backdrop-filter: blur(16px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+  transition: border-color .3s;
+}
+ 
+nav.scrolled { border-bottom-color: var(--border2); }
+ 
+.nav-logo {
+  font-size: 15px; font-weight: 700; letter-spacing: .04em;
+  color: var(--text);
+}
+ 
+.nav-logo span { color: var(--accent); }
+ 
+.nav-links { display: flex; align-items: center; gap: 8px; }
+ 
+.nav-links a {
+  font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text3); text-decoration: none;
+  padding: 6px 12px; border-radius: 6px;
+  transition: color .2s, background .2s;
+}
+ 
+.nav-links a:hover { color: var(--text); background: var(--surface); }
+ 
+.nav-cta {
+  font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: #fff; text-decoration: none;
+  padding: 7px 16px;
+  background: var(--accent);
+  border-radius: 6px;
+  transition: background .2s, transform .15s;
+}
+.nav-cta:hover { background: var(--accent2); transform: translateY(-1px); }
+ 
+/* ─── HERO ───────────────────────────────────────────── */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex; align-items: center;
+  padding: 120px 0 80px;
+  overflow: hidden;
+}
+ 
+/* Grid backdrop */
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%);
+  z-index: 0;
+}
+ 
+/* Radial glow */
+.hero::after {
+  content: '';
+  position: absolute;
+  top: -20%; left: 50%; transform: translateX(-50%);
+  width: 900px; height: 600px;
+  background: radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
+}
+ 
+.hero .wrap { position: relative; z-index: 2; }
+ 
+.hero-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+ 
+.hero-eyebrow {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 24px;
+}
+ 
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .4; }
+}
+ 
+.eyebrow-text {
+  font-family: var(--mono);
+  font-size: 11px; font-weight: 400; letter-spacing: .1em;
+  color: var(--text2); text-transform: uppercase;
+}
+ 
+h1 {
+  font-size: clamp(36px, 4.5vw, 58px);
+  font-weight: 800;
+  line-height: 1.0;
+  letter-spacing: -.02em;
+  margin-bottom: 20px;
+}
+ 
+h1 em { font-style: normal; color: var(--accent); }
+ 
+.hero-desc {
+  font-size: 16px; line-height: 1.7;
+  color: var(--text2);
+  max-width: 520px;
+  margin-bottom: 36px;
+  font-weight: 400;
+}
+ 
+.hero-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+ 
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--sans);
+  font-size: 13px; font-weight: 600; letter-spacing: .04em;
+  color: #fff;
+  background: var(--accent);
+  padding: 11px 22px;
+  border-radius: var(--r);
+  text-decoration: none;
+  transition: background .2s, transform .15s, box-shadow .2s;
+  box-shadow: 0 4px 24px rgba(59,130,246,0.25);
+}
+.btn-primary:hover {
+  background: var(--accent2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(59,130,246,0.35);
+}
+ 
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--sans);
+  font-size: 13px; font-weight: 500; letter-spacing: .04em;
+  color: var(--text2);
+  background: transparent;
+  padding: 11px 22px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  transition: color .2s, border-color .2s, background .2s;
+}
+.btn-secondary:hover {
+  color: var(--text); border-color: var(--border2);
+  background: var(--surface);
+}
+ 
+.hero-meta {
+  margin-top: 40px;
+  display: flex; gap: 36px;
+}
+ 
+.meta-item {}
+.meta-num {
+  font-size: 28px; font-weight: 800; letter-spacing: -.02em;
+  color: var(--text);
+}
+.meta-label {
+  font-family: var(--mono);
+  font-size: 11px; color: var(--text3); letter-spacing: .06em;
+  text-transform: uppercase; margin-top: 2px;
+}
+ 
+/* ─── HERO VISUAL (GUI app mockup) ──────────────────────── */
+.hero-visual {
+  position: relative;
+}
+ 
+/* App window shell */
+.app-window {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.03),
+    0 40px 80px rgba(0,0,0,0.6),
+    0 0 120px rgba(59,130,246,0.05);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+ 
+/* Title bar */
+.app-titlebar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.app-dots { display: flex; gap: 6px; }
+.app-dot { width: 10px; height: 10px; border-radius: 50%; }
+.app-dot.r { background: #ff5f57; }
+.app-dot.y { background: #febc2e; }
+.app-dot.g { background: #28c840; }
+.app-wintitle {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  font-size: 11px; color: var(--text3); letter-spacing: .04em;
+}
+ 
+/* Tab bar */
+.app-tabs {
+  display: flex; align-items: center;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 14px;
+  gap: 2px;
+}
+.app-tab {
+  padding: 8px 14px;
+  font-size: 11px; letter-spacing: .04em;
+  color: var(--text3);
+  border-bottom: 2px solid transparent;
+  cursor: default;
+  transition: color .2s;
+}
+.app-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+ 
+/* App body: sidebar + main */
+.app-body {
+  display: flex;
+  height: 290px;
+}
+ 
+/* Sidebar */
+.app-sidebar {
+  width: 160px; flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg3);
+  padding: 10px 0;
+}
+.sidebar-group-label {
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text3); padding: 8px 14px 4px;
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px;
+  font-size: 11px; color: var(--text2);
+  cursor: default;
+  border-left: 2px solid transparent;
+  transition: background .15s;
+}
+.sidebar-item:hover { background: var(--surface); }
+.sidebar-item.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: rgba(59,130,246,0.06);
+}
+.sidebar-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text3); flex-shrink: 0;
+}
+.sidebar-dot.green { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.sidebar-dot.amber { background: var(--amber); }
+ 
+/* Main panel */
+.app-main {
+  flex: 1; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+ 
+/* Toolbar */
+.app-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+.toolbar-label {
+  font-size: 10px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase;
+  margin-right: auto;
+}
+.toolbar-badge {
+  font-size: 9px; padding: 2px 7px;
+  background: rgba(34,197,94,0.12);
+  color: var(--green); border-radius: 4px;
+  letter-spacing: .05em;
+}
+.toolbar-badge.amber {
+  background: rgba(245,158,11,0.12); color: var(--amber);
+}
+ 
+/* Bench comparison panel */
+.bench-panel {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 0; flex: 1;
+}
+.bench-col {
+  padding: 12px 14px;
+  border-right: 1px solid var(--border);
+}
+.bench-col:last-child { border-right: none; }
+ 
+.bench-model {
+  font-size: 10px; font-weight: 500; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text2);
+  margin-bottom: 8px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.bench-model span { color: var(--text3); font-size: 9px; }
+ 
+.bench-bubble {
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px; color: var(--text2);
+  line-height: 1.5;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+}
+ 
+.bench-stats {
+  display: flex; gap: 10px; margin-top: 8px;
+}
+.bstat { text-align: center; }
+.bstat-val {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  display: block;
+}
+.bstat-key {
+  font-size: 9px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase;
+}
+.bstat-val.green { color: var(--green); }
+.bstat-val.accent { color: var(--accent); }
+ 
+/* Floating badge */
+.float-badge {
+  position: absolute;
+  bottom: -16px; right: -16px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.badge-icon { font-size: 18px; }
+.badge-text strong {
+  display: block; font-size: 13px; font-weight: 700;
+  color: var(--text);
+}
+.badge-text span { color: var(--text3); font-size: 11px; font-family: var(--mono); }
+ 
+/* ─── SECTION BASE ───────────────────────────────────── */
+section { padding: 96px 0; border-top: 1px solid var(--border); }
+ 
+.section-label {
+  font-family: var(--mono);
+  font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label::before {
+  content: '';
+  display: inline-block; width: 20px; height: 1px;
+  background: var(--accent);
+}
+ 
+h2 {
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 800; letter-spacing: -.02em;
+  line-height: 1.1;
+  margin-bottom: 14px;
+}
+ 
+.section-desc {
+  font-size: 15px; color: var(--text2);
+  max-width: 560px; line-height: 1.65;
+}
+ 
+/* ─── PROBLEM SECTION ────────────────────────────────── */
+.problem-section { background: var(--bg); }
+ 
+.problem-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 52px;
+}
+ 
+.problem-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .25s;
+}
+.problem-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent2), transparent);
+  opacity: 0;
+  transition: opacity .25s;
+}
+.problem-card:hover { border-color: var(--border2); }
+.problem-card:hover::before { opacity: 1; }
+ 
+.problem-card h3 {
+  font-size: 15px; font-weight: 700;
+  margin-bottom: 8px; color: var(--text);
+}
+.problem-card p { font-size: 13px; color: var(--text2); line-height: 1.65; }
+ 
+.problem-number {
+  font-family: var(--mono);
+  font-size: 11px; color: var(--text3);
+  margin-bottom: 12px;
+  letter-spacing: .1em;
+}
+ 
+/* ─── FEATURES ───────────────────────────────────────── */
+.features-section { background: var(--bg2); }
+ 
+.features-header {
+  display: flex; justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 52px;
+  gap: 32px;
+}
+ 
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+ 
+.feat {
+  background: var(--bg2);
+  padding: 28px;
+  transition: background .25s;
+  position: relative;
+}
+.feat:hover { background: var(--surface); }
+ 
+.feat-icon {
+  width: 36px; height: 36px;
+  background: var(--surface2);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px;
+  color: var(--accent);
+}
+ 
+.feat h3 {
+  font-size: 14px; font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.feat p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+ 
+.feat-tag {
+  display: inline-block; margin-top: 14px;
+  font-family: var(--mono); font-size: 10px;
+  color: var(--accent); letter-spacing: .08em;
+  text-transform: uppercase;
+}
+ 
+/* ─── PROVIDERS ──────────────────────────────────────── */
+.providers-section { background: var(--bg); }
+ 
+.providers-track-wrap {
+  overflow: hidden;
+  margin-top: 48px;
+  mask-image: linear-gradient(90deg, transparent, black 15%, black 85%, transparent);
+}
+ 
+.providers-track {
+  display: flex; gap: 10px;
+  width: max-content;
+  animation: scroll-track 30s linear infinite;
+}
+ 
+@keyframes scroll-track {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.providers-track:hover { animation-play-state: paused; }
+ 
+.provider-chip {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 11px; letter-spacing: .06em;
+  color: var(--text2);
+  background: var(--bg2);
+  white-space: nowrap;
+  transition: border-color .2s, color .2s;
+}
+.provider-chip:hover { border-color: var(--border2); color: var(--text); }
+ 
+.protocol-note {
+  margin-top: 28px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text3);
+}
+.protocol-note span { color: var(--accent); }
+ 
+/* ─── HOW IT WORKS ───────────────────────────────────── */
+.how-section { background: var(--bg2); }
+ 
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  margin-top: 52px;
+  position: relative;
+}
+ 
+.steps::after {
+  content: '';
+  position: absolute;
+  top: 24px; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border2), transparent);
+}
+ 
+.step {
+  padding: 0 16px;
+  text-align: left;
+  position: relative;
+  z-index: 1;
+}
+ 
+.step-num {
+  width: 48px; height: 48px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 13px; font-weight: 500;
+  color: var(--accent);
+  margin-bottom: 20px;
+}
+ 
+.step h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+.step p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+ 
+/* ─── DOWNLOAD ───────────────────────────────────────── */
+.download-section { background: var(--bg); }
+ 
+.download-box {
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 60px;
+  text-align: center;
+  background: var(--bg2);
+  position: relative;
+  overflow: hidden;
+}
+ 
+.download-box::before {
+  content: '';
+  position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 400px;
+  background: radial-gradient(ellipse, rgba(59,130,246,0.07) 0%, transparent 65%);
+  pointer-events: none;
+}
+ 
+.download-box h2 { margin-bottom: 8px; }
+.download-box .lead { color: var(--text2); font-size: 15px; margin-bottom: 40px; }
+ 
+.dl-cards {
+  display: flex; justify-content: center; gap: 12px;
+  flex-wrap: wrap;
+}
+ 
+.dl-card {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 32px;
+  text-decoration: none;
+  transition: border-color .2s, transform .2s, box-shadow .2s;
+  min-width: 140px;
+}
+.dl-card:hover {
+  border-color: var(--border2);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+}
+ 
+.dl-icon { font-size: 28px; line-height: 1; }
+.dl-os { font-size: 15px; font-weight: 700; color: var(--text); }
+.dl-ext { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: .06em; }
+ 
+.github-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 28px;
+  font-family: var(--mono); font-size: 12px;
+  color: var(--accent); text-decoration: none;
+  transition: color .2s;
+}
+.github-link:hover { color: var(--accent2); }
+.github-link::after { content: '→'; }
+ 
+/* ─── FOOTER ─────────────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 0;
+}
+ 
+.footer-inner {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 24px;
+}
+ 
+.footer-logo { font-size: 14px; font-weight: 700; color: var(--text2); }
+.footer-logo span { color: var(--accent); }
+.footer-copy { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-top: 4px; }
+ 
+.footer-links { display: flex; gap: 20px; }
+.footer-links a {
+  font-size: 12px; color: var(--text3); text-decoration: none;
+  transition: color .2s;
+  letter-spacing: .04em;
+}
+.footer-links a:hover { color: var(--text); }
+ 
+/* ─── ANIMATIONS ─────────────────────────────────────── */
+.fade-up {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity .6s ease, transform .6s ease;
+}
+.fade-up.visible { opacity: 1; transform: translateY(0); }
+.fade-up:nth-child(2) { transition-delay: .1s; }
+.fade-up:nth-child(3) { transition-delay: .2s; }
+.fade-up:nth-child(4) { transition-delay: .3s; }
+ 
+/* ─── RESPONSIVE ─────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hero-inner { grid-template-columns: 1fr; gap: 48px; }
+  .hero-visual { display: none; }
+  .problem-grid { grid-template-columns: 1fr; }
+  .features-grid { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .steps::after { display: none; }
+  .features-header { flex-direction: column; align-items: flex-start; }
+  .footer-inner { flex-direction: column; text-align: center; }
+  .download-box { padding: 40px 24px; }
+}
+@media (max-width: 600px) {
+  .wrap { padding: 0 20px; }
+  .steps { grid-template-columns: 1fr; }
+  nav { padding: 0 20px; }
+}
+</style>
 </head>
+ 
 <body>
-
-<nav>
-  <div class="container nav-inner">
-    <a href="#hero" class="nav-logo">
-      <span class="nav-logo-mark"><img src="hermes-logo.png" alt="Hermes" width="28" height="28" /></span>
-      Hermes
-    </a>
-    <ul class="nav-links">
-      <li><a href="#features">Features</a></li>
-      <li><a href="#providers">Providers</a></li>
-      <li><a href="https://github.com/enzomar/hermes/releases/latest" class="nav-cta">Download</a></li>
-    </ul>
+ 
+<!-- ═══ NAV ════════════════════════════════════════════ -->
+<nav id="main-nav">
+  <div class="nav-logo">Hermes<span>.</span></div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="https://github.com/enzomar/hermes" target="_blank">GitHub</a>
+    <a class="nav-cta" href="#download">Download</a>
   </div>
 </nav>
-
-<section id="hero">
-  <div class="hero-glow"></div>
-  <div class="container">
-    <div class="hero-content">
-      <span class="tag"><span class="tag-dot"></span>Free &amp; Local-First</span>
-      <h1 class="hero-headline" style="margin-top:24px;">
-        MCP Experimentation<br/>&amp; <em>AI Observability</em><br/>Workbench
-      </h1>
-      <p class="hero-sub">
-        Inspect MCP servers, chat with any LLM provider, benchmark models side-by-side, and trace every token and tool call — all running locally on your machine.
-      </p>
-      <div class="hero-actions">
-        <a href="https://github.com/enzomar/hermes/releases/latest" class="btn btn-primary">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 12h10" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Download
-        </a>
-        <a href="#features" class="btn btn-secondary">Explore Features</a>
+ 
+<!-- ═══ HERO ════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-inner">
+ 
+      <!-- LEFT COPY -->
+      <div class="hero-copy">
+        <div class="hero-eyebrow fade-up visible">
+          <span class="status-dot"></span>
+          <span class="eyebrow-text">Local-first · Open source · v0.9</span>
+        </div>
+ 
+        <h1 class="fade-up visible">
+          The control plane<br/>
+          for <em>MCP servers</em><br/>
+          &amp; AI workflows
+        </h1>
+ 
+        <p class="hero-desc fade-up visible">
+          Debug MCP servers, compare LLMs side-by-side, and trace every
+          tool call — all in one local-first workbench built for engineers
+          who move fast.
+        </p>
+ 
+        <div class="hero-actions fade-up visible">
+          <a class="btn-primary" href="#download">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download free
+          </a>
+          <a class="btn-secondary" href="https://github.com/enzomar/hermes" target="_blank">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+ 
+        <div class="hero-meta fade-up visible">
+          <div class="meta-item">
+            <div class="meta-num">14+</div>
+            <div class="meta-label">LLM Providers</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-num">Local</div>
+            <div class="meta-label">No Cloud / No Account</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-num">MIT</div>
+            <div class="meta-label">Open Source</div>
+          </div>
+        </div>
       </div>
-      <div class="hero-terminal">
-        <span class="p">$</span>
-        <span class="c">hermes --start</span>
+ 
+      <!-- RIGHT VISUAL — GUI App Mockup -->
+      <div class="hero-visual fade-up visible">
+        <div class="app-window">
+ 
+          <!-- Title bar -->
+          <div class="app-titlebar">
+            <div class="app-dots">
+              <div class="app-dot r"></div>
+              <div class="app-dot y"></div>
+              <div class="app-dot g"></div>
+            </div>
+            <div class="app-wintitle">Hermes — Benchmark</div>
+          </div>
+ 
+          <!-- Tabs -->
+          <div class="app-tabs">
+            <div class="app-tab">MCP Inspector</div>
+            <div class="app-tab active">Benchmark</div>
+            <div class="app-tab">Trace</div>
+            <div class="app-tab">Lab</div>
+          </div>
+ 
+          <!-- App body -->
+          <div class="app-body">
+ 
+            <!-- Sidebar: server list -->
+            <div class="app-sidebar">
+              <div class="sidebar-group-label">MCP Servers</div>
+              <div class="sidebar-item active">
+                <span class="sidebar-dot green"></span> docs-server
+              </div>
+              <div class="sidebar-item">
+                <span class="sidebar-dot green"></span> file-system
+              </div>
+              <div class="sidebar-item">
+                <span class="sidebar-dot amber"></span> db-connector
+              </div>
+ 
+              <div class="sidebar-group-label" style="margin-top:8px;">Models</div>
+              <div class="sidebar-item active">
+                <span class="sidebar-dot" style="background:var(--accent)"></span> gpt-4o
+              </div>
+              <div class="sidebar-item active">
+                <span class="sidebar-dot" style="background:var(--teal)"></span> claude-sonnet
+              </div>
+              <div class="sidebar-item">
+                <span class="sidebar-dot"></span> gemini-1.5
+              </div>
+            </div>
+ 
+            <!-- Main: benchmark split -->
+            <div class="app-main">
+              <div class="app-toolbar">
+                <span class="toolbar-label">Side-by-side comparison</span>
+                <span class="toolbar-badge">✔ Complete</span>
+              </div>
+ 
+              <div class="bench-panel">
+                <!-- Model A -->
+                <div class="bench-col">
+                  <div class="bench-model">
+                    GPT-4o <span>OpenAI</span>
+                  </div>
+                  <div class="bench-bubble">
+                    The recommended approach is to use batch processing with retry logic to handle rate limits gracefully...
+                  </div>
+                  <div class="bench-stats">
+                    <div class="bstat">
+                      <span class="bstat-val accent">187ms</span>
+                      <span class="bstat-key">Latency</span>
+                    </div>
+                    <div class="bstat">
+                      <span class="bstat-val">1.2k</span>
+                      <span class="bstat-key">Tokens</span>
+                    </div>
+                    <div class="bstat">
+                      <span class="bstat-val">$0.004</span>
+                      <span class="bstat-key">Cost</span>
+                    </div>
+                  </div>
+                </div>
+ 
+                <!-- Model B -->
+                <div class="bench-col">
+                  <div class="bench-model">
+                    Claude Sonnet <span>Anthropic</span>
+                  </div>
+                  <div class="bench-bubble">
+                    For rate limit handling, I'd suggest exponential backoff with jitter — this distributes retry load and avoids thundering herd...
+                  </div>
+                  <div class="bench-stats">
+                    <div class="bstat">
+                      <span class="bstat-val green">142ms</span>
+                      <span class="bstat-key">Latency</span>
+                    </div>
+                    <div class="bstat">
+                      <span class="bstat-val">980</span>
+                      <span class="bstat-key">Tokens</span>
+                    </div>
+                    <div class="bstat">
+                      <span class="bstat-val">$0.003</span>
+                      <span class="bstat-key">Cost</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+ 
+          </div>
+        </div>
+ 
+        <div class="float-badge">
+          <div class="badge-icon">🔒</div>
+          <div class="badge-text">
+            <strong>100% local</strong>
+            <span>Keys never leave your machine</span>
+          </div>
+        </div>
+      </div>
+ 
+    </div>
+  </div>
+</section>
+ 
+<!-- ═══ PROBLEM ══════════════════════════════════════════ -->
+<section class="problem-section">
+  <div class="wrap">
+    <div class="section-label fade-up">01 — Problem</div>
+    <h2 class="fade-up">AI development stacks are powerful.<br/>But painful to operate.</h2>
+    <p class="section-desc fade-up">
+      Every team stitches together logs, curl commands, and spreadsheets just to understand
+      what their AI stack is doing. There's a better way.
+    </p>
+ 
+    <div class="problem-grid">
+      <div class="problem-card fade-up">
+        <div class="problem-number">// 01</div>
+        <h3>MCP servers run blind</h3>
+        <p>No visibility into tool schemas, live calls, or error states. Debugging means reading raw logs and guessing what broke.</p>
+      </div>
+      <div class="problem-card fade-up">
+        <div class="problem-number">// 02</div>
+        <h3>LLM calls are scattered</h3>
+        <p>Logs across multiple services, no unified view. Comparing model quality means copy-pasting into spreadsheets.</p>
+      </div>
+      <div class="problem-card fade-up">
+        <div class="problem-number">// 03</div>
+        <h3>No execution tracing</h3>
+        <p>Token usage, latency, and tool call chains are invisible. You can't optimize what you can't measure.</p>
+      </div>
+      <div class="problem-card fade-up">
+        <div class="problem-number">// 04</div>
+        <h3>Benchmarking is manual</h3>
+        <p>Every model comparison is a one-off experiment. Regressions go undetected until users report them in production.</p>
       </div>
     </div>
   </div>
 </section>
-
-<hr class="sep" />
-
-<section id="features">
-  <div class="container">
-    <div class="section-header">
-      <span class="tag"><span class="tag-dot"></span>Capabilities</span>
-      <h2 class="section-title">Built for MCP &amp; LLM developers</h2>
-      <p class="section-sub">A unified interface for everything in your AI stack.</p>
+ 
+<!-- ═══ FEATURES ═════════════════════════════════════════ -->
+<section id="features" class="features-section">
+  <div class="wrap">
+    <div class="features-header">
+      <div>
+        <div class="section-label fade-up">02 — Capabilities</div>
+        <h2 class="fade-up">Everything you need<br/>to build with MCP &amp; LLMs</h2>
+      </div>
+      <p class="section-desc fade-up" style="margin-bottom:0;">
+        One interface for your entire AI development workflow.
+        No tabs. No context switching.
+      </p>
     </div>
+ 
     <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
-        <div class="feature-title">MCP Inspector</div>
-        <p class="feature-desc">Browse connected MCP servers, view tool schemas, execute calls with form or JSON input, and inspect responses in real time.</p>
+ 
+      <div class="feat fade-up">
+        <div class="feat-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+        <h3>MCP Inspector</h3>
+        <p>Browse tool schemas, execute calls with form or JSON input, and inspect live responses. Full protocol visibility.</p>
+        <span class="feat-tag">mcp · stdio · http</span>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-        <div class="feature-title">Multi-Provider Chat</div>
-        <p class="feature-desc">Converse with OpenAI, Anthropic, Google, Groq, OpenRouter, GitHub Models, DeepSeek, and local models through one interface.</p>
+ 
+      <div class="feat fade-up">
+        <div class="feat-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3>Multi-Provider Chat</h3>
+        <p>OpenAI, Anthropic, Google, Groq, DeepSeek, GitHub Models, Ollama, and more — all through one unified interface.</p>
+        <span class="feat-tag">14+ providers</span>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="9" height="9" rx="1"/><rect x="14" y="1" width="9" height="9" rx="1"/><rect x="1" y="14" width="9" height="9" rx="1"/><rect x="14" y="14" width="9" height="9" rx="1"/></svg></div>
-        <div class="feature-title">Side-by-Side Benchmarks</div>
-        <p class="feature-desc">Send the same prompt to two models simultaneously. Compare latency, token usage, and output quality in a split view.</p>
+ 
+      <div class="feat fade-up">
+        <div class="feat-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="9" height="9" rx="1"/><rect x="14" y="1" width="9" height="9" rx="1"/><rect x="1" y="14" width="9" height="9" rx="1"/><rect x="14" y="14" width="9" height="9" rx="1"/></svg>
+        </div>
+        <h3>Side-by-Side Benchmarks</h3>
+        <p>Same prompt, two models, split view. Compare latency, token usage, and output quality in one click.</p>
+        <span class="feat-tag">latency · tokens · quality</span>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-        <div class="feature-title">Trace &amp; Observability</div>
-        <p class="feature-desc">Waterfall timeline of every LLM call and tool invocation. See span durations, token counts, and error traces per session.</p>
+ 
+      <div class="feat fade-up">
+        <div class="feat-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h3>Execution Tracing</h3>
+        <p>Waterfall timeline of every LLM call and tool invocation. Span durations, token counts, and full error traces.</p>
+        <span class="feat-tag">spans · waterfall · errors</span>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-        <div class="feature-title">Secure Keystore</div>
-        <p class="feature-desc">API keys are encrypted locally and never leave your machine. Paste once, save, and the keystore resolves them automatically.</p>
+ 
+      <div class="feat fade-up">
+        <div class="feat-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v7l4 9H5l4-9V3z"/></svg>
+        </div>
+        <h3>MCP Lab</h3>
+        <p>Matrix experiments across models, tools, and workflows. Evaluate prompts and auto-detect regressions.</p>
+        <span class="feat-tag">eval · regression · matrix</span>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
-        <div class="feature-title">Debug API Console</div>
-        <p class="feature-desc">Send raw HTTP requests to the Hermes backend. Browse all available endpoints, edit payloads, and inspect responses.</p>
+ 
+      <div class="feat fade-up">
+        <div class="feat-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Secure &amp; Private</h3>
+        <p>API keys encrypted locally. No cloud sync, no telemetry, no account required. Your data never leaves your machine.</p>
+        <span class="feat-tag">local-first · encrypted</span>
+      </div>
+ 
+    </div>
+  </div>
+</section>
+ 
+<!-- ═══ PROVIDERS ════════════════════════════════════════ -->
+<section class="providers-section">
+  <div class="wrap">
+    <div class="section-label fade-up">03 — Integrations</div>
+    <h2 class="fade-up">Every provider.<br/>One workbench.</h2>
+    <p class="section-desc fade-up">Bring your own keys. Connect any MCP server. Switch models in seconds.</p>
+  </div>
+ 
+  <div class="providers-track-wrap" style="margin-top: 48px;">
+    <div class="providers-track" id="provTrack">
+      <!-- duplicated for infinite loop -->
+      <span class="provider-chip">OpenAI</span>
+      <span class="provider-chip">Anthropic</span>
+      <span class="provider-chip">Google Gemini</span>
+      <span class="provider-chip">Groq</span>
+      <span class="provider-chip">GitHub Models</span>
+      <span class="provider-chip">DeepSeek</span>
+      <span class="provider-chip">Mistral</span>
+      <span class="provider-chip">Together AI</span>
+      <span class="provider-chip">Perplexity</span>
+      <span class="provider-chip">OpenRouter</span>
+      <span class="provider-chip">Fireworks</span>
+      <span class="provider-chip">Cohere</span>
+      <span class="provider-chip">Ollama</span>
+      <span class="provider-chip">LM Studio</span>
+      <!-- dup -->
+      <span class="provider-chip">OpenAI</span>
+      <span class="provider-chip">Anthropic</span>
+      <span class="provider-chip">Google Gemini</span>
+      <span class="provider-chip">Groq</span>
+      <span class="provider-chip">GitHub Models</span>
+      <span class="provider-chip">DeepSeek</span>
+      <span class="provider-chip">Mistral</span>
+      <span class="provider-chip">Together AI</span>
+      <span class="provider-chip">Perplexity</span>
+      <span class="provider-chip">OpenRouter</span>
+      <span class="provider-chip">Fireworks</span>
+      <span class="provider-chip">Cohere</span>
+      <span class="provider-chip">Ollama</span>
+      <span class="provider-chip">LM Studio</span>
+    </div>
+  </div>
+ 
+  <div class="wrap">
+    <p class="protocol-note fade-up" style="margin-top: 28px;">
+      MCP servers connect via <span>STDIO</span> or <span>Streamable HTTP</span>.
+      Any server following the Model Context Protocol spec works out of the box.
+    </p>
+  </div>
+</section>
+ 
+<!-- ═══ HOW IT WORKS ════════════════════════════════════ -->
+<section id="how" class="how-section">
+  <div class="wrap">
+    <div class="section-label fade-up">04 — Workflow</div>
+    <h2 class="fade-up">From install to insight<br/>in under 60 seconds</h2>
+ 
+    <div class="steps">
+      <div class="step fade-up">
+        <div class="step-num">01</div>
+        <h3>Download &amp; launch</h3>
+        <p>No accounts, no Docker, no cloud setup. Install the desktop app and it runs instantly on macOS, Windows, or Linux.</p>
+      </div>
+      <div class="step fade-up">
+        <div class="step-num">02</div>
+        <h3>Add your API keys</h3>
+        <p>Paste your provider keys. Hermes encrypts them locally — they never leave your machine or touch a server.</p>
+      </div>
+      <div class="step fade-up">
+        <div class="step-num">03</div>
+        <h3>Connect MCP servers</h3>
+        <p>Point Hermes at any STDIO or HTTP MCP server. Tool schemas are auto-discovered instantly.</p>
+      </div>
+      <div class="step fade-up">
+        <div class="step-num">04</div>
+        <h3>Inspect, trace &amp; benchmark</h3>
+        <p>Run prompts, compare models, trace executions, and catch regressions — all from one interface.</p>
       </div>
     </div>
   </div>
 </section>
-
-<hr class="sep" />
-
-<section id="providers">
-  <div class="container">
-    <div class="section-header">
-      <span class="tag"><span class="tag-dot"></span>Integrations</span>
-      <h2 class="section-title">Works with every provider</h2>
-      <p class="section-sub">Connect your preferred LLM and MCP servers. Bring your own keys.</p>
-    </div>
-    <div class="providers-row">
-      <span class="provider-pill">OpenAI</span>
-      <span class="provider-pill">Anthropic</span>
-      <span class="provider-pill">Google Gemini</span>
-      <span class="provider-pill">OpenRouter</span>
-      <span class="provider-pill">Groq</span>
-      <span class="provider-pill">GitHub Models</span>
-      <span class="provider-pill">DeepSeek</span>
-      <span class="provider-pill">Mistral</span>
-      <span class="provider-pill">Together AI</span>
-      <span class="provider-pill">Perplexity</span>
-      <span class="provider-pill">Fireworks</span>
-      <span class="provider-pill">Cohere</span>
-      <span class="provider-pill">Ollama</span>
-      <span class="provider-pill">LM Studio</span>
-    </div>
-    <p style="margin-top:24px;font-size:13px;color:var(--text-muted);">MCP servers connect via STDIO (local process) or Streamable HTTP (remote). Any server following the Model Context Protocol spec works out of the box.</p>
-  </div>
-</section>
-
-<hr class="sep" />
-
-<section id="cta">
-  <div class="container">
-    <div class="cta-box">
-      <h2>Free. Local-first. No accounts.</h2>
-      <p>Hermes runs entirely on your machine. No cloud services, no telemetry, no vendor lock-in. Download, install, and start experimenting.</p>
-      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-        <a href="https://github.com/enzomar/hermes/releases/latest/download/hermes-macos.dmg" class="btn btn-primary">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 12h10" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Download for macOS
+ 
+<!-- ═══ DOWNLOAD ═════════════════════════════════════════ -->
+<section id="download" class="download-section">
+  <div class="wrap">
+    <div class="download-box fade-up">
+      <div class="section-label" style="justify-content:center;">Free · Open Source · No Account Required</div>
+      <h2>Start building with Hermes</h2>
+      <p class="lead">Local-first. MIT licensed. Works on every major platform.</p>
+ 
+      <div class="dl-cards">
+        <a class="dl-card" href="https://github.com/enzomar/hermes/releases/latest/download/hermes-macos.dmg">
+          <span class="dl-icon">🍎</span>
+          <span class="dl-os">macOS</span>
+          <span class="dl-ext">.dmg · Apple Silicon</span>
         </a>
-        <a href="https://github.com/enzomar/hermes/releases/latest/download/hermes-windows.msi" class="btn btn-secondary">Download for Windows</a>
-        <a href="https://github.com/enzomar/hermes/releases/latest/download/hermes-linux.AppImage" class="btn btn-secondary">Download for Linux</a>
+        <a class="dl-card" href="https://github.com/enzomar/hermes/releases/latest/download/hermes-windows.msi">
+          <span class="dl-icon">🪟</span>
+          <span class="dl-os">Windows</span>
+          <span class="dl-ext">.msi · x64</span>
+        </a>
+        <a class="dl-card" href="https://github.com/enzomar/hermes/releases/latest/download/hermes-linux.AppImage">
+          <span class="dl-icon">🐧</span>
+          <span class="dl-os">Linux</span>
+          <span class="dl-ext">.AppImage · x64</span>
+        </a>
       </div>
-      <p style="margin-top:16px;font-size:12px;color:var(--text-muted);font-family:var(--mono);">
-        <a href="https://github.com/enzomar/hermes/releases/latest" style="color:var(--accent);text-decoration:none;">Latest release</a> · macOS 12+ / Windows 10+ / Linux · ~60 MB
-      </p>
+ 
+      <a class="github-link" href="https://github.com/enzomar/hermes/releases/latest" target="_blank">
+        View all releases on GitHub
+      </a>
     </div>
   </div>
 </section>
-
+ 
+<!-- ═══ FOOTER ════════════════════════════════════════════ -->
 <footer>
-  <div class="container footer-inner">
+  <div class="wrap footer-inner">
     <div>
-      <div class="footer-logo">Hermes</div>
-      <div class="footer-copy">&copy; 2025 Hermes. All rights reserved.</div>
+      <div class="footer-logo">Hermes<span>.</span></div>
+      <div class="footer-copy">© 2025 Hermes — Open source under MIT</div>
     </div>
     <div class="footer-links">
       <a href="#features">Features</a>
-      <a href="#providers">Providers</a>
-      <a href="#cta">Download</a>
+      <a href="#how">How it works</a>
+      <a href="https://github.com/enzomar/hermes" target="_blank">GitHub</a>
+      <a href="#download">Download</a>
     </div>
   </div>
 </footer>
-
+ 
+<!-- ═══ SCRIPTS ═══════════════════════════════════════════ -->
+<script>
+// Scroll-triggered fade-up
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+ 
+document.querySelectorAll('.fade-up:not(.visible)').forEach(el => io.observe(el));
+ 
+// Nav scrolled state
+const nav = document.getElementById('main-nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 40);
+}, { passive: true });
+</script>
+ 
 </body>
 </html>
+ 
