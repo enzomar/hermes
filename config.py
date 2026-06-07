@@ -10,9 +10,43 @@ from pydantic import BaseModel, Field, model_validator
 GITHUB_MODELS_API_BASE = "https://models.github.ai/inference"
 DEFAULT_LLM_PROFILE_NAME = "Primary AI"
 
+ProviderType = Literal[
+    "openai", "anthropic", "groq", "mistral", "together", "perplexity",
+    "openrouter", "google", "cohere", "fireworks", "deepseek",
+    "local", "local-cli", "github-copilot",
+]
+
+
+class LLMProviderConfig(BaseModel):
+    """Connectivity: how to reach the LLM provider."""
+
+    provider: ProviderType = "openai"
+    model: str = "openai/gpt-4.1-mini"
+    api_base: str | None = None
+    api_key_env: str | None = None
+    custom_llm_provider: str | None = None
+    cli_command: str | None = None
+    cli_args: list[str] = Field(default_factory=list)
+
+
+class AIProfileConfig(BaseModel):
+    """Behavior: how the AI should respond."""
+
+    temperature: float = 0.2
+    top_p: float | None = None
+    presence_penalty: float | None = None
+    frequency_penalty: float | None = None
+    max_tokens: int = 2048
+    timeout_seconds: float = 90.0
+    system_prompt: str = (
+        "You are Hermes, an MCP AI IDE workbench assistant. Be concise, prefer tools when they help, "
+        "and report tool failures explicitly."
+    )
+    disable_tools: bool = False
+
 
 class LLMConfig(BaseModel):
-    provider: Literal["openai", "anthropic", "groq", "mistral", "together", "perplexity", "openrouter", "google", "cohere", "fireworks", "deepseek", "local", "local-cli", "github-copilot"] = "openai"
+    provider: ProviderType = "openai"
     model: str = "openai/gpt-4.1-mini"
     api_base: str | None = None
     api_key_env: str | None = None
@@ -109,6 +143,33 @@ class LLMConfig(BaseModel):
         if self.provider == "local-cli" and not self.cli_command:
             raise ValueError("local-cli provider requires cli_command")
         return self
+
+    @property
+    def provider_config(self) -> LLMProviderConfig:
+        """Extract provider connectivity config as a sub-model."""
+        return LLMProviderConfig(
+            provider=self.provider,
+            model=self.model,
+            api_base=self.api_base,
+            api_key_env=self.api_key_env,
+            custom_llm_provider=self.custom_llm_provider,
+            cli_command=self.cli_command,
+            cli_args=self.cli_args,
+        )
+
+    @property
+    def profile_config(self) -> AIProfileConfig:
+        """Extract behavior config as a sub-model."""
+        return AIProfileConfig(
+            temperature=self.temperature,
+            top_p=self.top_p,
+            presence_penalty=self.presence_penalty,
+            frequency_penalty=self.frequency_penalty,
+            max_tokens=self.max_tokens,
+            timeout_seconds=self.timeout_seconds,
+            system_prompt=self.system_prompt,
+            disable_tools=self.disable_tools,
+        )
 
 
 class MCPServerConfig(BaseModel):

@@ -31,7 +31,7 @@ VERSION ?= $(CURRENT_VERSION)
 PYTHON_READY := .venv/.deps-installed
 NPM_READY := desktop/node_modules/.install-stamp
 
-.PHONY: help doctor check-deps setup-rust setup setup-python setup-desktop start start-backend version set-version package package-backend clean
+.PHONY: help doctor check-deps setup-rust setup setup-python setup-desktop start start-backend version set-version package package-backend clean release
 
 help:
 	@printf '%s\n' \
@@ -227,3 +227,34 @@ package: doctor $(PYTHON_READY) $(NPM_READY)
 clean:
 	rm -rf build dist .pytest_cache .ruff_cache
 	rm -rf desktop/dist desktop/src-tauri/target
+
+# ─── Release ──────────────────────────────────────────────────────────────────
+# Usage:
+#   make release              — bump minor (0.1.0 → 0.2.0), commit, tag, push
+#   make release BUMP=patch   — bump patch (0.1.0 → 0.1.1)
+#   make release BUMP=major   — bump major (0.1.0 → 1.0.0)
+#   make release VERSION=1.2.3 — set exact version, commit, tag, push
+
+BUMP ?= minor
+
+release:
+	@NEXT_VERSION=""; \
+	if [ -n "$(filter-out minor patch major,$(VERSION))" ] || [ "$(VERSION)" != "$(CURRENT_VERSION)" ] && [ "$(VERSION)" != "" ]; then \
+		NEXT_VERSION="$(VERSION)"; \
+	else \
+		IFS='.' read -r MAJOR MINOR PATCH <<< "$(CURRENT_VERSION)"; \
+		case "$(BUMP)" in \
+			major) NEXT_VERSION="$$((MAJOR + 1)).0.0" ;; \
+			minor) NEXT_VERSION="$$MAJOR.$$((MINOR + 1)).0" ;; \
+			patch) NEXT_VERSION="$$MAJOR.$$MINOR.$$((PATCH + 1))" ;; \
+			*) printf 'Invalid BUMP value: %s (use major, minor, or patch)\n' "$(BUMP)" >&2; exit 1 ;; \
+		esac; \
+	fi; \
+	printf 'Releasing v%s (was %s)\n' "$$NEXT_VERSION" "$(CURRENT_VERSION)"; \
+	$(MAKE) set-version VERSION=$$NEXT_VERSION; \
+	git add -A; \
+	git commit -m "release: v$$NEXT_VERSION"; \
+	git tag "v$$NEXT_VERSION"; \
+	git push origin HEAD; \
+	git push origin "v$$NEXT_VERSION"; \
+	printf '\n✓ Released v%s — GitHub Actions will build and publish.\n' "$$NEXT_VERSION"
